@@ -7,7 +7,6 @@
 		public $outputMod = 0;
 		public $description = "";
 		public $oneturn = false;
-        public $inEffect = true;
 		
 		function __construct($id, $shipid, $systemid, $phpclass, $turn){
 			$this->id = (int)$id;
@@ -211,7 +210,54 @@
 			parent::__construct($id, $shipid, $systemid, $phpclass, $turn);
 		}
 	}
-	
 
+        // ******************************************************************
+        // Jammer criticals
+        class PartialBurnout extends Critical{
+
+		public $description = "Partial burnout.";
+		public $outputMod = -0.5;
+
+		function __construct($id, $shipid, $systemid, $phpclass, $turn){
+			parent::__construct($id, $shipid, $systemid, $phpclass, $turn);
+		}
+
+	}
+
+        class SevereBurnout extends Critical{
+
+		public $description = "Severe burnout.";
+		public $outputMod = -1;
+
+		function __construct($id, $shipid, $systemid, $phpclass, $turn){
+			parent::__construct($id, $shipid, $systemid, $phpclass, $turn);
+		}
+
+	}
+        // Jammer criticals end
+        // ******************************************************************
+
+
+        // ******************************************************************
+        // Shield criticals
+        class StrReduced extends Critical{
+                public $description = "Strength Reduced.";
+                public $outputMod = -1;
+
+                function __construct($id, $shipid, $systemid, $phpclass, $turn){
+			parent::__construct($id, $shipid, $systemid, $phpclass, $turn);
+		}
+        }
+
+        class EffReduced extends Critical{
+            public $description = "Effectiveness Reduced.";
+
+                function __construct($id, $shipid, $systemid, $phpclass, $turn){
+			parent::__construct($id, $shipid, $systemid, $phpclass, $turn);
+		}
+        }
+
+        // Shield criticals end
+        // ******************************************************************
 
 ?>

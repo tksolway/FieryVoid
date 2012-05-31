@@ -157,13 +157,65 @@
             
             return null;
         }
-        
+
+        public function getDamageValueMod($shooter, $pos, $turn){
+
+            $shieldMod = 0;
+
+            foreach($this->systems as $system){
+                // iterate over all possible shields.
+                // shields might overlap. In that case, the highest possible
+                // value is taken. Take care not to count shields with an
+                // EffReduced critical.
+                if($system instanceof Shield){
+
+                    $tf = $this->getFacingAngle();
+                    $shooterCompassHeading = mathlib::getCompassHeadingOfShip($this, $shooter);
+
+                    if (mathlib::isInArc($shooterCompassHeading, Mathlib::addToDirection($system->startArc,$tf), Mathlib::addToDirection($system->endArc,$tf) )){
+                        if ($system->output > $shieldMod && !$system->hasCritical("EffReduced"))
+                        {
+                            $shieldMod = $system->output;
+                        }
+                    }
+                }
+            }
+
+            return $shieldMod;
+        }
+
         public function getHitChangeMod($shooter, $pos, $turn){
-			
-			//TODO: interceptors
-			
-			return 0;
-		}
+
+            $shieldVal = 0;
+
+            $dis = mathlib::getDistanceHex($this->getCoPos(), $shooter->getCoPos());
+            
+            if ( $dis == 0 && ($shooter instanceof FighterFlight)){
+                // If shooter are fighers and range is 0, they are under the shield
+                $shieldVal = 0;
+            }
+            else{
+                foreach($this->systems as $system){
+                    // iterate over all possible shields.
+                    // shields might overlap. In that case, the highest possible
+                    // value is taken.
+                    if($system instanceof Shield){
+
+                        $tf = $this->getFacingAngle();
+                        $shooterCompassHeading = mathlib::getCompassHeadingOfShip($this, $shooter);
+
+                        if (mathlib::isInArc($shooterCompassHeading, Mathlib::addToDirection($system->startArc,$tf), Mathlib::addToDirection($system->endArc,$tf) )){
+                            if ($system->output > $shieldVal)
+                            {
+                                $shieldVal = $system->output;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $shieldVal;
+	}
 
         
         public function getLastTurnMovement($turn){
@@ -336,7 +388,7 @@
                     return 0;
                     
                 $structure = $this->getStructureSystem($location);
-                if ($structure != null && $structure->isDestroyed($turn-1))
+                if ($structure != null && $structure->isDestroyedBeforeTurn($turn))
                     return 0;
             }
             
@@ -359,7 +411,7 @@
                
         }
         
-        public function isDestroyed($turn = false){
+        public function isDestroyed(){
         
             foreach($this->systems as $system){
                 /*
@@ -367,7 +419,7 @@
                     return true;
                 }
                 */
-                if ($system instanceof Structure && $system->location == 0 && $system->isDestroyed($turn)){
+                if ($system instanceof Structure && $system->location == 0 && $system->isDestroyed()){
                     return true;
                 }
                 
@@ -628,7 +680,7 @@
                      $systems[] = $system;
                         
                     if ($system instanceof Structure){
-                        $multiply = 1;
+                        $multiply = 2;
                             
                         $totalStructure += round($system->maxhealth * $multiply);
                     }else{
@@ -649,7 +701,7 @@
                 $health = 0;
             
                 if ($system->name == "structure"){
-                    $multiply = 1;
+                    $multiply = 2;
                         
                     $health = round($system->maxhealth * $multiply);
                 }else{

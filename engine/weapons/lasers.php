@@ -12,7 +12,7 @@
             
             $rake = $this->raking;
             
-            $totalDamage = $damage;
+            $totalDamage = $damage - $target->getDamageValueMod($shooter, 0, 0);
             
             if ($this->piercing && $fireOrder->firingMode == 2)
                 $rake = $totalDamage;

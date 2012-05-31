@@ -39,12 +39,12 @@ class Tinashi extends HeavyCombatVessel{
         $this->addFrontSystem(new ElectroPulseGun(2, 6, 3, 0, 120));
         $this->addFrontSystem(new Thruster(4, 8, 0, 4, 1));
 
-        $this->addAftSystem(new FusionCannon(3, 8, 1, 240, 0));
         $this->addAftSystem(new NeutronLaser(4, 10, 6, 240, 0));
-        $this->addAftSystem(new FusionCannon(3, 8, 1, 120, 240));
         $this->addAftSystem(new Thruster(4, 35, 0, 10, 2));
-        $this->addAftSystem(new FusionCannon(3, 8, 1, 120, 240));
         $this->addAftSystem(new NeutronLaser(4, 10, 6, 0, 120));
+        $this->addAftSystem(new FusionCannon(3, 8, 1, 240, 0));
+        $this->addAftSystem(new FusionCannon(3, 8, 1, 120, 240));
+        $this->addAftSystem(new FusionCannon(3, 8, 1, 120, 240));
         $this->addAftSystem(new FusionCannon(3, 8, 1, 0, 120));
 
         //0:primary, 1:front, 2:rear, 3:left, 4:right;
