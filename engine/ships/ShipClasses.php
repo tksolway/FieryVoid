@@ -162,20 +162,25 @@
 
             $shieldMod = 0;
 
-            foreach($this->systems as $system){
-                // iterate over all possible shields.
-                // shields might overlap. In that case, the highest possible
-                // value is taken. Take care not to count shields with an
-                // EffReduced critical.
-                if($system instanceof Shield){
+            if ( $dis == 0 && ($shooter instanceof FighterFlight)){
+                // If shooter are fighers and range is 0, they are under the shield
+                $shieldMod = 0;
+            }
+            else{
+                foreach($this->systems as $system){
+                    // iterate over all possible shields.
+                    // shields might overlap. In that case, the highest possible
+                    // value is taken. Take care not to count shields with an
+                    // EffReduced critical.
+                    if($system instanceof Shield){
 
-                    $tf = $this->getFacingAngle();
-                    $shooterCompassHeading = mathlib::getCompassHeadingOfShip($this, $shooter);
+                        $tf = $this->getFacingAngle();
+                        $shooterCompassHeading = mathlib::getCompassHeadingOfShip($this, $shooter);
 
-                    if (mathlib::isInArc($shooterCompassHeading, Mathlib::addToDirection($system->startArc,$tf), Mathlib::addToDirection($system->endArc,$tf) )){
-                        if ($system->output > $shieldMod && !$system->hasCritical("EffReduced"))
-                        {
-                            $shieldMod = $system->output;
+                        if (mathlib::isInArc($shooterCompassHeading, Mathlib::addToDirection($system->startArc,$tf), Mathlib::addToDirection($system->endArc,$tf) )){
+                            if ($system->output > $shieldMod && !$system->hasCritical("EffReduced")){
+                                $shieldMod = $system->output;
+                            }
                         }
                     }
                 }
