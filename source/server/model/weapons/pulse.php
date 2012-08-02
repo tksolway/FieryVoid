@@ -215,13 +215,13 @@
 
         public function setMinDamage()
         {
-            setPulsarShots();
+            $this->setPulsarShots();
             $this->minDamage = 10 - $this->dp;
         }
 
         public function setMaxDamage()
         {
-            setPulsarShots();
+            $this->setPulsarShots();
             $this->maxDamage = 10 - $this->dp;
         }
 

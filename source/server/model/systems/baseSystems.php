@@ -107,7 +107,7 @@ interface DefensiveSystem{
     
 }
 
-class Shield implements DefensiveSystem{
+class Shield extends ShipSystem implements DefensiveSystem{
     public $name = "shield";
     public $displayName = "Shield";
     public $startArc = 0;

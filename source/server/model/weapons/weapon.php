@@ -332,18 +332,37 @@ class Weapon extends ShipSystem{
         $target = $gamedata->getShipById($fireOrder->targetid);
         $pos = $shooter->getCoPos();
         $jammermod = 0;
-        
+        $jammerValue = $target->getSpecialAbilityValue("Jammer", array("shooter"=>$shooter, "target"=>$target));
         $defence = 0;
+        $rp = $this->calculateRangePenalty($pos, $target);
+        $rangePenalty = $rp["rp"];
+
         if ($this->ballistic){
             $movement = $shooter->getLastTurnMovement($fireOrder->turn);
             $pos = mathlib::hexCoToPixel($movement->x, $movement->y);
             $defence = $target->getDefenceValuePos($pos);
+
+            // check if target has moved more than launch distance away.
+            $range = $this->range;
+
+            // Account for reduced launch range in case of jammer.
+            if ($jammerValue > 0)
+            {
+                $range = $range/($jammerValue+1);
+            }
+
+            if(mathlib::getDistance($pos,  $target->getCoPos()) > $range)
+            {
+                $notes = $rp["notes"] . "Target moved out of launch range.";
+
+                $fireOrder->needed = $range;
+                $fireOrder->notes = $notes;
+                $fireOrder->updated = true;
+                return;
+            }
         }else{
             $defence = $target->getDefenceValue($shooter);
         }
-                       
-        $rp = $this->calculateRangePenalty($pos, $target);
-        $rangePenalty = $rp["rp"];
         
         $dew = $target->getDEW($gamedata->turn);
         if ($shooter instanceof FighterFlight)
@@ -402,7 +421,6 @@ class Weapon extends ShipSystem{
         }
         else
         {
-            $jammerValue = $target->getSpecialAbilityValue("Jammer", array("shooter"=>$shooter, "target"=>$target));
             if ($jammerValue > 0)
             {
                 $jammermod = $rangePenalty*$jammerValue;
