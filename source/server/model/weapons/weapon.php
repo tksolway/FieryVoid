@@ -132,6 +132,10 @@ class Weapon extends ShipSystem{
     
     public function firedOnTurn($turn){
         
+        
+        if ($this instanceof DualWeapon && isset($this->turnsFired[$turn]))
+            return true;
+        
         foreach ($this->fireOrders as $fire){
             if ($fire->weaponid == $this->id && $fire->turn == $turn){
                 return true;
@@ -191,9 +195,44 @@ class Weapon extends ShipSystem{
         parent::setSystemDataWindow($turn);
     }
     
-    public function getStartLoading($gameid, $ship)
+    public function onAdvancingGamedata($ship)
     {
-        return new WeaponLoading($this->id, 0, $gameid, $ship->id, $this->getNormalLoad(), 0, 0, 0);
+        $data = $this->calculateLoading();
+        if ($data)
+            SystemData::addDataForSystem($this->id, 0, $ship->id, $data->toJSON());
+    }
+    
+    public function setSystemData($data, $subsystem)
+    {
+        $array = json_decode($data, true);
+        if (!is_array($array))
+            return;
+        
+        foreach ($array as $i=>$entry)
+        {
+            if ($i == "loading"){
+                $loading = new WeaponLoading(
+                    $entry[1],
+                    $entry[2],
+                    $entry[3],
+                    $entry[4]
+                );
+                
+                $this->setLoading($loading);
+            }
+        }
+    }
+    
+    public function setInitialSystemData($ship)
+    {
+        $data = $this->getStartLoading();
+        if ($data)
+            SystemData::addDataForSystem($this->id, 0, $ship->id, $data->toJSON());
+    }
+    
+    public function getStartLoading()
+    {
+        return new WeaponLoading($this->getNormalLoad(), 0, 0, 0);
     }
     
     public function setLoading( $loading )
@@ -206,33 +245,39 @@ class Weapon extends ShipSystem{
         $this->turnsloaded = $loading->loading;
     }
     
-    public function calculateLoading( $gameid, $phase, $ship, $turn )
+    protected function getLoadedAmmo()
     {
+        return 0;
+    }    
+    
+    public function calculateLoading()
+    {
+        
         $normalload = $this->getNormalLoad();
-        if ($phase === 2)
+        if (TacGamedata::$currentPhase === 2)
         {
-            if ( $this->isOfflineOnTurn($turn) )
+            if ( $this->isOfflineOnTurn(TacGamedata::$currentTurn) )
             {
-                return new WeaponLoading($this->id, 0, $gameid, $ship->id, 0, 0, 0, 0);
+                return new WeaponLoading(0, 0, $this->getLoadedAmmo(), 0);
             }
-            else if ($this->ballistic && $this->firedOnTurn($turn) )
+            else if ($this->ballistic && $this->firedOnTurn(TacGamedata::$currentTurn) )
             {
-                return new WeaponLoading($this->id, 0, $gameid, $ship->id, 0, 0, 0, 0);
+                return new WeaponLoading(0, 0, $this->getLoadedAmmo(), 0);
             }
-            else if (!$this->isOverloadingOnTurn($turn))
+            else if (!$this->isOverloadingOnTurn(TacGamedata::$currentTurn))
             {
-                return new WeaponLoading($this->id, 0, $gameid, $ship->id, $this->turnsloaded, 0, 0, 0);
+                return new WeaponLoading($this->turnsloaded, 0, $this->getLoadedAmmo(), 0);
             }
         }
-        else if ($phase === 4)
+        else if (TacGamedata::$currentPhase === 4)
         {
-           return $this->calculatePhase4Loading($gameid, $ship, $turn);
+           return $this->calculatePhase4Loading();
         }
-        else if ($phase === 1)
+        else if (TacGamedata::$currentPhase === 1)
         {
             if ($this->overloadshots === -1)
             {
-                return new WeaponLoading($this->id, 0, $gameid, $ship->id, 0, 0, 0, 0);
+                return new WeaponLoading(0, 0, $this->getLoadedAmmo(), 0);
             }
             else
             {
@@ -248,21 +293,21 @@ class Weapon extends ShipSystem{
                 if ($overloading > $normalload)
                     $overloading = $normalload;
 
-                return new WeaponLoading($this->id, 0, $gameid, $ship->id, $newloading, $newExtraShots, 0, $overloading);
+                return new WeaponLoading($newloading, $newExtraShots, $this->getLoadedAmmo(), $overloading);
             }
             
         }
         
-        return null;
+        return new WeaponLoading($this->turnsloaded, $this->overloadshots, $this->getLoadedAmmo(), $this->overloadturns);
     }
     
-    private function calculatePhase4Loading($gameid, $ship, $turn )
+    private function calculatePhase4Loading()
     {
         if ($this->ballistic)   
             return null;
         
             
-        if ($this->firedOnTurn($turn)){
+        if ($this->firedOnTurn(TacGamedata::$currentTurn)){
             /* if overloading ja ampuu:
              
                     JOS ON EXTRASHOTTEJA laske extrashotteja. Jos extrashotit menee nollaan, pistä -1 (cooldown)
@@ -278,27 +323,27 @@ class Weapon extends ShipSystem{
                 if ($newExtraShots === 0)
                 {
                     //if extra shots are reduced to zero, go to cooldown
-                    return new WeaponLoading($this->id, 0, $gameid, $ship->id, 0, -1, 0, 0);
+                    return new WeaponLoading(0, -1, $this->getLoadedAmmo(), 0);
                 }
                 else
                 {
                     //if you didn't use the last extra shot, keep on going.
-                    return new WeaponLoading($this->id, 0, $gameid, $ship->id, $this->turnsloaded, $newExtraShots, 0, $this->overloadturns);
+                    return new WeaponLoading($this->turnsloaded, $newExtraShots, $this->getLoadedAmmo(), $this->overloadturns);
                 }
             }
             else
             {
                 //Situation normal, no overloading -> lose loading
-                return new WeaponLoading($this->id, 0, $gameid, $ship->id, 0, 0, 0, 0);
+                return new WeaponLoading(0, 0, $this->getLoadedAmmo(), 0);
             }
             
         }else{
               //cannot save the extra shots from everload -> lose loading and cooldown
             if ($this->overloadshots > 0 && $this->overloadshots < $this->extraoverloadshots)
-                return new WeaponLoading($this->id, 0, $gameid, $ship->id, 0, -1, 0, 0);
+                return new WeaponLoading(0, -1, $this->getLoadedAmmo(), 0);
         }
         
-        return null;
+        return new WeaponLoading($this->turnsloaded, $this->overloadshots, $this->getLoadedAmmo(), $this->overloadturns);
     }
     
     public function beforeTurn($ship, $turn, $phase){
@@ -560,7 +605,6 @@ class Weapon extends ShipSystem{
         $damage = $target->getPiercingDamagePerLoc(
                 $this->getFinalDamage($shooter, $target, $pos, $gamedata, $fireOrder)
             );
-
         $locs = $target->getPiercingLocations($shooter, $pos, $gamedata->turn, $this);
         
         foreach ($locs as $loc){

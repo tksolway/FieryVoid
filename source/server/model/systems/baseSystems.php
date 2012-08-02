@@ -100,9 +100,9 @@ interface DefensiveSystem{
 
     public function getDefensiveType();
      
-    public function getDefensiveHitChangeMod($shooter, $pos, $turn);
+    public function getDefensiveHitChangeMod($target, $shooter, $pos, $turn);
     
-    public function getDefensiveDamageMod($shooter, $pos, $turn);
+    public function getDefensiveDamageMod($target, $shooter, $pos, $turn);
     
     
 }
@@ -118,7 +118,7 @@ class Shield extends ShipSystem implements DefensiveSystem{
     public $tohitPenalty = 0;
     public $damagePenalty = 0;
     
-    public $possibleCriticals = array(16=>"StrReduced", 20=>"EffReduced", 25=>array("StrReduced", "EffReduced"));
+    //public $possibleCriticals = array(16=>"StrReduced", 20=>"EffReduced", 25=>array("StrReduced", "EffReduced"));
 
     function __construct($armour, $maxhealth, $powerReq, $shieldFactor, $startArc, $endArc){
         // shieldfactor is handled as output.
@@ -129,13 +129,13 @@ class Shield extends ShipSystem implements DefensiveSystem{
     }
     
     public function onConstructed($ship, $turn, $phase){
-		$this->tohitPenalty = $this->output;
-		$this->damagePenalty = $this->output;
+		$this->tohitPenalty = $this->getOutput();
+		$this->damagePenalty = $this->getOutput();
      
     }
     
-    private function checkIsFighterUnderShield($shooter){
-        $dis = mathlib::getDistanceHex($this->getCoPos(), $shooter->getCoPos());
+    private function checkIsFighterUnderShield($target, $shooter){
+        $dis = mathlib::getDistanceOfShipInHex($target, $shooter);
             
         if ( $dis == 0 && ($shooter instanceof FighterFlight)){
             // If shooter are fighers and range is 0, they are under the shield
@@ -149,16 +149,16 @@ class Shield extends ShipSystem implements DefensiveSystem{
         return "Shield";
     }
     
-    public function getDefensiveHitChangeMod($shooter, $pos, $turn){
+    public function getDefensiveHitChangeMod($target, $shooter, $pos, $turn){
         
-        if ($this->checkIsFighterUnderShield($shooter))
+        if ($this->checkIsFighterUnderShield($target, $shooter))
             return 0;
         
         return $this->output;
     }
     
-    public function getDefensiveDamageMod($shooter, $pos, $turn){
-        if ($this->checkIsFighterUnderShield($shooter))
+    public function getDefensiveDamageMod($target, $shooter, $pos, $turn){
+        if ($this->checkIsFighterUnderShield($target, $shooter))
             return 0;
         
         return $this->output;

@@ -69,16 +69,30 @@ class DualWeapon extends Weapon{
         $this->weapons[$fire->firingMode]->setFireOrder($fire);
     }
     
-    
-    public function getStartLoading($gameid, $ship)
+    public function onAdvancingGamedata($ship)
     {
-        $loadings = array();
-        foreach ($this->weapons as $subId => $weapon){
-            $loading = $weapon->getStartLoading($gameid, $ship);
-            $loading->subsystem = $subId;
-            $loadings[] = $loading;
+        foreach ($this->weapons as $i=>$weapon)
+        {
+            $data = $weapon->calculateLoading();
+            if ($data)
+                SystemData::addDataForSystem($this->id, $i, $ship->id, $data->toJSON());
         }
-        return $loadings;
+    }
+    
+    public function setSystemData($data, $subsystem)
+    {
+        $this->weapons[$subsystem]->setSystemData($data, $subsystem);
+        
+    }
+    
+    public function setInitialSystemData($ship)
+    {
+        foreach ($this->weapons as $i=>$weapon)
+        {
+            $data = $weapon->getStartLoading();
+            if ($data)
+                SystemData::addDataForSystem($this->id, $i, $ship->id, $data->toJSON());
+        }
     }
     
     public function setLoading( $loading )
@@ -90,29 +104,6 @@ class DualWeapon extends Weapon{
         
     }
     
-    public function calculateLoading( $gameid, $phase, $ship, $turn )
-    {
-        $loadings = array();
-        foreach ($this->weapons as $subId => $weapon){
-            $loading = $weapon->calculateLoading( $gameid, $phase, $ship, $turn );
-            
-            if (!$loading)
-                continue;
-            
-            $loading->subsystem = $subId;
-            $loadings[] = $loading;
-        }
-        
-        if (count($loadings)==0)
-            return null;
-        
-        return $loadings;
-    }
-    
-    public function firedOnTurn($turn){
-        
-        return isset($this->turnsFired[$turn]);
-    }
 }
 
 class LaserPulseArray extends DualWeapon{

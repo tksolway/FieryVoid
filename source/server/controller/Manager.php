@@ -58,7 +58,7 @@ class Manager{
                                 
             return self::getTacGamedata($gameid, $userid, 0, 0, -1);
         }
-        catch(exception $e) {
+        catch(Exception $e) {
             Debug::error($e);
         }
     }
@@ -454,30 +454,17 @@ class Manager{
                 self::startInitialOrders($gamedata);
             }
             
-            $loadings = Array();
-            foreach ($gamedata->ships as $ship)
-            {
-                foreach ($ship->systems as $system)
+            if ($phase > 0){
+                foreach ($gamedata->ships as $ship)
                 {
-                    if ($system instanceof Weapon)
+                    foreach ($ship->systems as $system)
                     {
-                        $loading = $system->calculateLoading($gamedata->id, $gamedata->phase, $ship, $gamedata->turn);
-                        if ($loading){
-                            if (is_array($loading))
-                            {
-                                $loadings = array_merge ($loadings, $loading);
-                            }else{
-                                $loadings[] = $loading;
-                            }
-                            
-                        }
-                            
+                    $system->onAdvancingGamedata($ship);
                     }
-                    
                 }
+
+                self::$dbManager->updateSystemData(SystemData::$allData);
             }
-            
-            self::$dbManager->updateWeaponLoading($loadings);
             self::$dbManager->endTransaction(false);
             self::$dbManager->releaseGameSubmitLock($gameid);
             
@@ -554,9 +541,16 @@ class Manager{
             
             $move = new MovementOrder(-1, "start", $x, $y, 0, 0, 5, $h, $h, true, 1, 0);
             $ship->movement = array($move);
+            
+            foreach ($ship->systems as $system)
+            {
+                $system->setInitialSystemData($ship);
+            }
+            
         }
         
         self::$dbManager->insertShips($servergamedata->id, $servergamedata->ships);
+        self::$dbManager->insertSystemData(SystemData::$allData);
         
         self::changeTurn($gamedata);
     }
