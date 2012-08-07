@@ -366,6 +366,7 @@ shipWindowManager = {
 				shipWindowManager.setSystemData(ship, system, shipwindow);
 				if (system.name == "scanner"){
 					shipWindowManager.addEW(ship, shipwindow);
+                    botPanel.setEW(ship);
 				}
 			}
 		}
@@ -812,7 +813,7 @@ shipWindowManager = {
 		var system = ship.systems[systemwindow.data("id")];
 
 
-		if (shipManager.isDestroyed(ship) || shipManager.isDestroyed(ship, system) || shipManager.isAdrift(ship))
+		if (shipManager.isDestroyed(ship) || shipManager.isDestroyed(ship, system))
 			return;
 		
 		if (ship.userid != gamedata.thisplayer)
@@ -838,7 +839,7 @@ shipWindowManager = {
 		var ship = gamedata.getShip(shipwindow.data("ship"));
 		var system = ship.systems[systemwindow.data("id")];
 		
-		if (shipManager.isDestroyed(ship) || shipManager.isDestroyed(ship, system) || shipManager.isAdrift(ship))
+		if (shipManager.isDestroyed(ship) || shipManager.isDestroyed(ship, system))
 			return;
 		
 		if (ship.userid != gamedata.thisplayer)

@@ -4,8 +4,8 @@ window.ew = {
     getScannerOutput: function(ship){
         var ret = 0;
         
-        if (shipManager.criticals.hasCriticalInAnySystem(ship, "ShipDisabledOneTurn"))
-			return 0;
+        if (shipManager.isAdrift(ship))
+            return 0;
         
         for (var i in ship.systems){
             var system = ship.systems[i];
@@ -13,15 +13,17 @@ window.ew = {
             if (system.outputType === "EW"){
                 var output = shipManager.systems.getOutput(ship, system);
             
-                if (shipManager.criticals.hasCritical(system, "RestrictedEW"))
-                    output -= 2;
-            
                 if (output > 0)
                     ret += output;
             }
+            
+            if (system.name == "CnC" && shipManager.criticals.hasCritical(system, "RestrictedEW"))
+                ret -= 2;
+            
         }
+    
         
-        return ret;
+        return (ret > 0) ? ret : 0;
     },
     
     getUsedEW: function(ship){
