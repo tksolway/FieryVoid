@@ -134,6 +134,9 @@ class Weapon extends ShipSystem{
     
     public function firedOnTurn($turn){
         
+        if ($this instanceof DualWeapon && isset($this->turnsFired[$turn]))
+            return true;
+        
         foreach ($this->fireOrders as $fire){
             if ($fire->weaponid == $this->id && $fire->turn == $turn){
                 return true;
@@ -244,7 +247,7 @@ class Weapon extends ShipSystem{
                 
                 $newExtraShots = $this->overloadshots;
                 $overloading = $this->overloadturns+1;
-                if ($overloading === $normalload && $newExtraShots === 0)
+                if ($overloading == $normalload && $newExtraShots == 0)
                     $newExtraShots = $this->extraoverloadshots;
 
                 if ($overloading > $normalload)
