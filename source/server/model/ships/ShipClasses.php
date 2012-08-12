@@ -17,6 +17,7 @@
         public $destroyed = false;
         public $pointCost = 0;
         public $faction = null;
+        public $slot;
         
         public $enabledSpecialAbilities = array();
         
@@ -34,10 +35,11 @@
 
         public $movement = array();
         
-        function __construct($id, $userid, $name, $movement){
+        function __construct($id, $userid, $name, $slot){
             $this->id = (int)$id;
             $this->userid = (int)$userid;
             $this->name = $name;
+            $this->slot = $slot;
 
         }
         
@@ -726,8 +728,8 @@
         
         
         
-        function __construct($id, $userid, $name, $movement){
-            parent::__construct($id, $userid, $name,$movement);
+        function __construct($id, $userid, $name, $slot){
+            parent::__construct($id, $userid, $name,$slot);
         }
      
             
@@ -752,8 +754,8 @@
     
         public $shipSizeClass = 1;
         
-        function __construct($id, $userid, $name, $movement){
-            parent::__construct($id, $userid, $name, $movement);
+        function __construct($id, $userid, $name, $slot){
+            parent::__construct($id, $userid, $name, $slot);
         }
         
         public function getFireControlIndex(){

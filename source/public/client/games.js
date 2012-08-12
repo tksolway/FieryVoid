@@ -18,7 +18,7 @@ window.gamedata = {
 	
 	createGames: function(){
 	
-		var gamehtml = '<div class="game slot takeslot clickable" data-gameid="{gameid}"><span class="name">{gamename}</span><span class="value players">players: {players}/2</span></div>'; 
+		var gamehtml = '<div class="game slot clickable" data-gameid="{gameid}"><span class="name">{gamename}</span><span class="value players">players: {players}/2</span></div>'; 
 		var activefound = false;
 		var lobbyfound = false;
 		for (var i in this.games){
@@ -31,7 +31,7 @@ window.gamedata = {
 					var html = gamehtml;
 					html = html.replace("{gameid}", game.id);
 					html = html.replace("{gamename}", game.name);
-					html = html.replace("{players}", Object.keys(game.players).length);
+					html = html.replace("{players}", Object.keys(game.slots).length);
 					
 					gameDOM = $(html);
 					gameDOM.appendTo($('.gamecontainer.active'));
@@ -45,13 +45,13 @@ window.gamedata = {
 					var html = gamehtml;
 					html = html.replace("{gameid}", game.id);
 					html = html.replace("{gamename}", game.name);
-					html = html.replace("{players}", Object.keys(game.players).length);
+					html = html.replace("{players}", Object.keys(game.slots).length);
 					
 					gameDOM = $(html);
 					gameDOM.appendTo($('.gamecontainer.lobby'));
 					$('.gamecontainer.lobby').addClass("found");
 				}else{
-					$('.players', gameDOM).html("players: " + Object.keys(game.players).length+"/2");
+					$('.players', gameDOM).html("players: " + Object.keys(game.slots).length+"/2");
 				}
 				lobbyfound = true;
 			}
@@ -73,14 +73,12 @@ window.gamedata = {
 	}, 
 	
 	gameIdFound: function(id){
-		
 		for (var i in this.games){
 			if (this.games[i].id == id)
 				return true;
 		}
 		
 		return false;
-	
 	},
 	
 	isInGame: function(id){
@@ -89,8 +87,8 @@ window.gamedata = {
 			if (this.games[i].id != id)
 				continue;
 				
-			for (var a in this.games[i].players){
-				if (this.games[i].players[a].id == this.thisplayer)
+			for (var a in this.games[i].slots){
+				if (this.games[i].slots[a].playerid == this.thisplayer)
 					return true;
 			}
 		}

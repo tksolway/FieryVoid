@@ -1,8 +1,8 @@
 <?php
 class Omega  extends BaseShip{
     
-    function __construct($id, $userid, $name,  $movement){
-        parent::__construct($id, $userid, $name,  $movement);
+    function __construct($id, $userid, $name,  $slot){
+        parent::__construct($id, $userid, $name,  $slot);
         
 		$this->pointCost = 925;
 		$this->faction = "EA";
@@ -74,7 +74,7 @@ class Omega  extends BaseShip{
         $this->addFrontSystem(new Structure( 6, 60));
         $this->addAftSystem(new Structure( 4, 50 ));
         $this->addLeftSystem(new Structure( 4, 70));
-        $this->addRightSystem(new Structure( 5, 70));
+        $this->addRightSystem(new Structure( 4, 70));
         $this->addPrimarySystem(new Structure( 6,60));
     }
 }

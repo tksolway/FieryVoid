@@ -1,7 +1,13 @@
+.creategame .subpanel.slotcontainer{
+    padding-bottom:0px;
+}
+
 .slot{
 	border:1px solid #DEEBFF;
 	color:#DEEBFF;
 	padding: 3px 5px;
+    position:relative;
+    margin-bottom:5px;
 }
 
 .slot span{
@@ -30,6 +36,10 @@
 }
 .clickable:hover{
 	text-decoration:underline;
+}
+
+.takeslot{
+    color:red;
 }
 
 .taken .takeslot{
@@ -62,4 +72,60 @@
 	cursor:pointer;
 	color:#DEEBFF;
 	text-decoration:underline;
+}
+
+.mediumSize{
+    width:200px;
+    
+}
+
+.smallSize{
+    width:100px;
+    
+}
+
+.tinySize{
+    width:20px;
+    
+}
+.slot input{
+    margin-right:5px;
+}
+
+.close{
+    position:absolute;
+    border:1px solid #496791;
+    width:10px;
+    height:10px;
+    right:5px;
+    top:4px;
+    background-image:url(../img/close.png);
+    cursor:pointer;
+}
+
+.value{
+    color:#496791;
+    
+}
+
+.selectslot{
+    display:none;
+}
+
+.taken .selectslot{
+    
+    display:inline;
+}
+
+.slot.selected .selectslot{
+    
+    display:none;
+}
+
+.slot.selected{
+    background-color:#123D73 !important;
+	-moz-box-shadow: 0px 0px 15px #0099ff;
+    -webkit-box-shadow: 0px 0px 15px #0099ff;
+    box-shadow: 0px 0px 15px #0099ff;
+    
 }

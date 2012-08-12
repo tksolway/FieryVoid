@@ -6,14 +6,7 @@
         return;
 	}
 	
-	$gameid = Manager::shouldBeInGame($_SESSION["user"]);
-	if ($gameid){
-		header('Location: gamelobby.php');
-	}
-	
 	$games = Manager::getTacGames($_SESSION["user"]);
-	
-	
 	
 	$games = json_encode($games, JSON_NUMERIC_CHECK);
 	
@@ -60,6 +53,13 @@
 			
 			<a href="creategame.php">CREATE GAME</a>
 		</div>
+        <div id="globalchat" class="panel large" style="height:150px;">
+        <?php 
+            $chatgameid = 0;
+            $chatelement = "#globalchat";
+            include("chat.php")
+        ?>
+        </div>
 
 	</body>
 </html>

@@ -1,7 +1,7 @@
 window.gamedata = {
 
 	thisplayer: 0,
-	players: null,
+	slots: null,
 	ships: {},
 	gameid: 0,
 	turn: 0,
@@ -10,16 +10,23 @@ window.gamedata = {
 	waiting: true,
 	maxpoints:0,
 	status: "LOBBY",
+    selectedSlot:null,
 
 	canAfford: function(ship){
 
-		var points = 0;
+        var slotid = gamedata.selectedSlot;
+        var selectedSlot = playerManager.getSlotById(slotid);
+
+        var points = 0;
 		for (var i in gamedata.ships){
-			points += gamedata.ships[i].pointCost;
+            var lship = gamedata.ships[i];
+            if (lship.slot != slotid)
+                continue;
+			points += lship.pointCost;
 		}
 
 		points += ship.pointCost;
-		if (points > gamedata.maxpoints)
+		if (points > selectedSlot.points)
 			return false;
 
 		return true;
@@ -32,24 +39,56 @@ window.gamedata = {
 		}
 		a++;
 		ship.id = a;
+        ship.slot = gamedata.selectedSlot;
 		gamedata.ships[a] = ship;
-		var h = $('<div class="ship" data-shipindex="'+a+'"><span class="shiptype">'+ship.shipClass+'</span><span class="shipname name">'+ship.name+'</span><span class="pointcost">'+ship.pointCost+'p</span><span class="remove clickable">remove</span></div>');
+		var h = $('<div class="ship bought slotid_'+ship.slot+' shipid_'+ship.id+'" data-shipindex="'+a+'"><span class="shiptype">'+ship.shipClass+'</span><span class="shipname name">'+ship.name+'</span><span class="pointcost">'+ship.pointCost+'p</span><span class="remove clickable">remove</span></div>');
 		$(".remove", h).bind("click", function(){
 			delete gamedata.ships[a];
 			h.remove();
 			gamedata.calculateFleet();
 		});
-		h.appendTo("#fleet")
+		h.appendTo("#fleet");
 		gamedata.calculateFleet();
 	},
+    
+    constructFleetList: function(){
+        
+        var slotid = gamedata.selectedSlot;
+        var selectedSlot = playerManager.getSlotById(slotid);
+        
+        $(".ship.bought").remove();
+        for (var i in gamedata.ships){
+            var ship = gamedata.ships[i];
+            if (ship.slot != slotid)
+                continue;
+            
+            var h = $('<div class="ship bought slotid_'+ship.slot+' shipid_'+ship.id+'" data-shipindex="'+ship.id+'"><span class="shiptype">'+ship.shipClass+'</span><span class="shipname name">'+ship.name+'</span><span class="pointcost">'+ship.pointCost+'p</span><span class="remove clickable">remove</span></div>');
+            $(".remove", h).bind("click", function(){
+                delete gamedata.ships[ship.id];
+                h.remove();
+                gamedata.calculateFleet();
+            });
+            h.appendTo("#fleet");
+        }
+        gamedata.calculateFleet();
+    },
 
 	calculateFleet: function(){
 
+        var slotid = gamedata.selectedSlot;
+        if (!slotid)
+            return;
+        
+        var selectedSlot = playerManager.getSlotById(slotid);
 		var points = 0;
 		for (var i in gamedata.ships){
+            if (gamedata.ships[i].slot != slotid)
+                continue;
+            
 			points += gamedata.ships[i].pointCost;
 		}
 
+        $('.max').html(selectedSlot.points);
 		$('.current').html(points);
 		return points;
 
@@ -85,17 +124,19 @@ window.gamedata = {
     },
 
 	parseServerData: function(serverdata){
-
 		if (serverdata == null){
 			window.location = "games.php";
 			return;
 		}
-
+        
+        if (!serverdata.id)
+            return;
+        
         gamedata.turn = serverdata.turn;
         gamedata.gamephase = serverdata.phase;
         gamedata.activeship = serverdata.activeship;
         gamedata.gameid = serverdata.id;
-        gamedata.players = serverdata.players;
+        gamedata.slots = serverdata.slots;
         //gamedata.ships = serverdata.ships;
         gamedata.thisplayer = serverdata.forPlayer;
         gamedata.maxpoints = serverdata.points;
@@ -109,12 +150,92 @@ window.gamedata = {
 
 
 		this.createSlots();
-		$('.takeslot').unbind("click", this.clickTakeslot);
-		$('.takeslot').bind("click", this.clickTakeslot);
 		this.enableBuy();
+        this.constructFleetList();
 	},
+    
+    createNewSlot: function(data){
+        var template = $("#slottemplatecontainer .slot");
+        var target = $("#team"+data.team + ".slotcontainer");
+        var actual = template.clone(true).appendTo(target);
+        
+        actual.data("slotid", data.slot);
+        actual.addClass("slotid_"+data.slot);
+        gamedata.setSlotData(data);
+    },
+    
+    createSlots: function()
+    {
+        var selectedSlot = playerManager.getSlotById(gamedata.selectedSlot);
+        if (selectedSlot && selectedSlot.playerid != gamedata.thisplayer){
+            $('.slot.slotid_'+selectedSlot.slot).removeClass("selected");
+            gamedata.selectedSlot = null;
+        }
+        
+        for (var i in gamedata.slots){
+            var slot = gamedata.slots[i];
+            var slotElement = $('.slot.slotid_'+slot.slot);
+            
+            if (!slotElement.length){
+                gamedata.createNewSlot(slot);
+            }
+            
+            slotElement = $('.slot.slotid_'+slot.slot);
+            var data = slotElement.data();
+            if (playerManager.isOccupiedSlot(slot)){
+                console.log("slot " +slot.slot+" is occupied");
+				var player = playerManager.getPlayerInSlot(slot);
+                slotElement.data("playerid", player.id);
+                slotElement.addClass("taken");
+                $(".playername", slotElement).html(player.name);
 
-	createSlots: function(){
+
+				if	(slot.lastphase == "-2"){
+					slotElement.addClass("ready");
+
+				}
+                
+                if (player.id == gamedata.thisplayer)
+                {
+                    if (gamedata.selectedSlot == null)
+                        gamedata.selectedSlot = slot.slot;
+                    $(".close", slotElement).show();
+                }
+                else
+                    $(".close", slotElement).hide();
+
+			}else{
+                $(".close", slotElement).hide();
+                
+                slotElement.attr("data-playerid", "");
+                slotElement.removeClass("taken");
+                $(".playername", slotElement).html("");
+
+				slotElement.removeClass("ready");
+			}
+            
+            if (gamedata.selectedSlot == slot.slot){
+                gamedata.selectSlot(slot);
+            }
+
+        }
+    },
+
+    setSlotData: function(data){
+        var slot = $(".slot.slotid_"+data.slot);
+        $(".name",slot).html(data.name);
+        $(".points",slot).html(data.points);
+        
+        $(".depx",slot).html(data.depx);
+        $(".depy",slot).html(data.depy);
+        $(".deptype",slot).html(data.deptype);
+        $(".depwidth",slot).html(data.depwidth);
+        $(".depheight",slot).html(data.depheight);
+        $(".depavailable",slot).html(data.depavailable);
+        
+    },
+    
+	createSlotsOld: function(){
 
 		for (var i = 1;i<=2;i++){
 			var slot = $('.slot[data-slotid="'+i+'"]');
@@ -136,7 +257,7 @@ window.gamedata = {
 				}
 
 			}else{
-
+                
 				if (data.playerid){
 					slot.attr("data-playerid", "");
 					slot.removeClass("taken");
@@ -154,22 +275,37 @@ window.gamedata = {
 	},
 
 	clickTakeslot: function(){
-		var slot = $(this).parent().data().slotid;
-		console.log(slot);
-		window.location = "gamelobby.php?gameid="+gamedata.gameid+"&slotid="+slot;
+        var slot = $(".slot").has($(this));
+		var slotid = slot.data("slotid");
+        ajaxInterface.submitSlotAction("takeslot", slotid);
 	},
 
+    onLeaveSlotClicked: function(){
+        var slot = $(".slot").has($(this));
+		var slotid = slot.data("slotid");
+        ajaxInterface.submitSlotAction("leaveslot", slotid);
+    },
+
 	enableBuy: function(){
-
-		if (playerManager.isInGame()){
-			$(".buy").show();
-		}
-
+        var selectedSlot = playerManager.getSlotById(gamedata.selectedSlot);
+        if (selectedSlot && selectedSlot.playerid == gamedata.thisplayer){
+            $(".buy").show();
+        }else{
+            $(".buy").hide();
+        }
 	},
 
 	buyShip: function(e){
 		var shipclass = $(this).parent().data().shipclass;
 		var ship = gamedata.getShipByType(shipclass);
+        
+        var slotid = gamedata.selectedSlot;
+        var selectedSlot = playerManager.getSlotById(slotid);
+        if	(selectedSlot.lastphase == "-2"){
+            window.confirm.error("This slot has already bought a fleet!", function(){});
+            return false;
+        }
+        
 		if (gamedata.canAfford(ship)){
 			window.confirm.showShipBuy(ship, gamedata.doBuyShip);
 		}else{
@@ -213,9 +349,29 @@ window.gamedata = {
 		}
 
 		ajaxInterface.submitGamedata();
-	}
+	},
 
+    onLeaveClicked: function(){
+        window.location = "gamelobby.php?gameid="+gamedata.gameid+"&leave=true";
+    },
+    
+    onSelectSlotClicked: function(e){
+        var slotElement = $(".slot").has($(this));
+		var slotid = slotElement.data("slotid");
+        var slot = playerManager.getSlotById(slotid);
+        
+        if (slot.playerid == gamedata.thisplayer)
+            gamedata.selectSlot(slot);
+        
+    },
 
+    selectSlot: function(slot){
+        $(".slot").removeClass("selected");
+        
+        $(".slot.slotid_"+slot.slot).addClass("selected");
+        gamedata.selectedSlot = slot.slot;
+        this.constructFleetList();
+    }
 
 
 }

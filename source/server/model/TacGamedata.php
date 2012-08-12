@@ -9,7 +9,7 @@ class TacGamedata{
     
     public $id, $turn, $phase, $activeship, $name, $status, $points, $background, $creator;
     public $ships = array();
-    public $players = array();
+    public $slots = array();
     public $waiting = false;
     public $changed = false;
     public $getDistanceHex = false;
@@ -30,7 +30,7 @@ class TacGamedata{
         $this->points = (int)$points;
         $this->background = $background;
         $this->creator = $creator;
-   }
+    }
    
     public function setPhase($phase)
     {
@@ -63,6 +63,7 @@ class TacGamedata{
    
     public function onConstructed(){
         
+        $this->deleteUnavailableShips();
         
         $this->doSortShips();
         
@@ -102,12 +103,29 @@ class TacGamedata{
             $ship->onConstructed($this->turn, $this->phase);
         
         }
-    
-    
     }
    
+    public function deleteUnavailableShips()
+    {
+        if ($this->phase < 0)
+            return;
+        
+        for ($i=count($this->ships)-1;$i>=0;$i--){
+            $ship = $this->ships[$i];
+            if ($this->slots[$ship->slot]->depavailable > $this->turn)
+                unset($this->ships[$i]);
+        }
+    }
+    
     public function isFinished(){
 
+        foreach ($this->slots as $slot)
+        {
+            //still ships coming in
+            if ($slot->depavailable > $this->turn)
+                return false;
+        }
+        
         foreach ($this->ships as $ship){
             if ($ship->isDestroyed()){
                 //print($ship->name . " is destroyed");
@@ -262,7 +280,7 @@ class TacGamedata{
     
     public function othersDone($userid){
     
-        foreach ($this->players as $player){
+        foreach ($this->slots as $player){
             if ($player->id == $userid)
                 continue;
                 
@@ -275,30 +293,34 @@ class TacGamedata{
     
     }
     
-    public function hasAlreadySubmitted($userid){
-        $player = $this->getPlayerById($userid);
+    
+    
+    public function hasAlreadySubmitted($userid, $slotid = null){
+        $slots = $this->getSlotsByPlayerId($userid, $slotid);
         
-        if ($player == null)
-            return true;
-            
-        if ($player->lastturn < $this->turn || $player->lastphase < $this->phase)
+        foreach ($slots as $slot)
+        {
+            if ($slot->lastturn < $this->turn || $slot->lastphase < $this->phase)
             return false;
-            
+        }
         
         return true;
     
     }
     
-    public function getPlayerById($id){
-        foreach ($this->players as $player){
-            if ($player->id == $id){
-                return $player;
+    public function getSlotsByPlayerId($id, $slotid = null)
+    {
+        $slots = array();
+        foreach ($this->slots as $slot){
+            if ($slot->playerid == $id){
+                if ($slotid == null || $slot->slot == $slotid)
+                    $slots[] = $slot;
             }
         }
         
-        return null;
+        return $slots;
+        
     }
-    
     
     private function setForPlayer($player){
         $this->forPlayer = $player;
@@ -375,6 +397,20 @@ class TacGamedata{
     }
     
     private function deleteHiddenData(){
+        
+        if ($this->phase == -1){
+            foreach ($this->ships as $ship){
+                if ($ship->userid == $this->forPlayer)
+                    continue;
+                
+                for ($i=(sizeof($ship->movement)-1);$i>=0;$i--)
+                {
+                    $move = $ship->movement[$i];
+                    if ($move->type == "deploy")
+                        unset($ship->movement[$i]);
+                }
+            }
+        }
     
         if ($this->phase == 1){
             foreach ($this->ships as $ship){
@@ -495,11 +531,13 @@ class TacGamedata{
     
     private function setWaiting(){
     
-        $player = $this->getPlayerById($this->forPlayer);
-        if ($player == null){
+        $player = $this->getSlotsByPlayerId($this->forPlayer);
+        if (!isset($player[0])){
             $this->waiting = false;
             return;
         }
+        
+        $player = $player[0];
     
         if ($this->phase == 1 || $this->phase == 3 || $this->phase == 4){
                             

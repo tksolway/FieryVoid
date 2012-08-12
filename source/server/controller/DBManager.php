@@ -57,6 +57,13 @@ class DBManager {
         if (!$answer = mysqli_query($this->connection, $sql))
             throw new exception("DBManager:insert, SQL error: ".mysqli_error($this->connection)."\n sql: $sql". mysqli_errno($this->connection));
             
+        return $this->getLastInstertID();
+
+        
+    }
+    
+    private function getLastInstertID()
+    {
         $sql = "select LAST_INSERT_ID() as id";
         
         if (!$answer = mysqli_query($this->connection, $sql))
@@ -68,8 +75,6 @@ class DBManager {
         }
         
         return null;
-
-        
     }
     
     public function update($sql) {
@@ -111,11 +116,7 @@ class DBManager {
     }
     
     public function close() {
-		
 		mysqli_close($this->connection);
-		
-		
-		
     }
 	
 	
@@ -123,63 +124,69 @@ class DBManager {
 	
 		try{
 			
-			$sql = "INSERT INTO `B5CGM`.`tac_ship` VALUES(null, $userid, $gameid, '".$this->DBEscape($ship->name)."', '".$ship->phpclass."', 0, 0, 0, 0, 0, 0)";
+			$sql = "INSERT INTO `B5CGM`.`tac_ship` VALUES(null, $userid, $gameid, '".$this->DBEscape($ship->name)."', '".$ship->phpclass."', 0, 0, 0, 0, 0, $ship->slot)";
+            Debug::log($sql);
 			$id = $this->insert($sql);
 			
-			$sql = "INSERT INTO `B5CGM`.`tac_iniative` VALUES($gameid, $id, 0, 0)";
-            $this->insert($sql);			
+			//$sql = "INSERT INTO `B5CGM`.`tac_iniative` VALUES($gameid, $id, 0, 0)";
+            //$this->insert($sql);			
 			
 		}catch(Exception $e) {
 			$this->endTransaction(true);
             throw $e;
         }
 	}
+    
+    public function deleteEmptyGames()
+    {
+        $ids = array();
+        $stmt = $this->connection->prepare("
+            SELECT 
+                gameid, playerid
+            FROM
+                tac_playeringame
+            GROUP BY 
+                gameid 
+            HAVING
+                count(playerid) = 0
+        ");
+
+        if ($stmt)
+        {
+            $stmt->bind_result($id, $playerid);
+            $stmt->execute();
+            while ($stmt->fetch())
+            {
+                $ids[] = $id; 
+            }
+            $stmt->close();
+        }
+        
+        $this->deleteGames($ids);
+    }
 	
-	public function leaveSlot($userid){
+	public function leaveSlot($userid, $gameid, $slotid = null){
 		
+        $userid = $this->DBEscape($userid);
+        $gameid = $this->DBEscape($gameid);
+        $slotid = $this->DBEscape($slotid);
 		
 		try{
 			
-			$sql = "SELECT * FROM `B5CGM`.`tac_game` g join `B5CGM`.`tac_playeringame` p on g.id = p.gameid where p.playerid = $userid and g.status = 'LOBBY';";
-			
-			$result = $this->query($sql);
+            $sql = "DELETE FROM `B5CGM`.`tac_ship` WHERE tacgameid = $gameid AND playerid = $userid";
+            if ($slotid)
+                $sql .= " AND slot = $slotid";
             
-            if ($result == null || sizeof($result) == 0)
-				return false;
-				
-			foreach ($result as $value){
-			
-				if ($value->creator == $userid){
-					$sql = "DELETE FROM `B5CGM`.`tac_playeringame` WHERE gameid = ".$value->id;
-					$this->update($sql);
-					
-					$sql = "DELETE FROM `B5CGM`.`tac_ship` WHERE tacgameid = ".$value->id;
-					$this->update($sql);
-					
-					$sql = "DELETE FROM `B5CGM`.`tac_iniative` WHERE gameid = ".$value->id;
-					$this->update($sql);
-					
-					$sql = "DELETE FROM `B5CGM`.`tac_game` WHERE id = ".$value->id;
-					$this->update($sql);
-					
-				}else{
-					$sql = "DELETE FROM `B5CGM`.`tac_ship` WHERE tacgameid = ".$value->id." AND playerid = $userid";
-					$this->update($sql);
-					
-					$sql = "DELETE FROM `B5CGM`.`tac_playeringame` WHERE gameid = ".$value->id . " AND playerid = $userid";
-					$this->update($sql);
-				}
-			
-				
-				
+            $this->update($sql);
 
-				
-			}
+            $sql = "UPDATE tac_playeringame SET playerid = null, lastphase = -3, lastturn = 0 WHERE gameid = $gameid AND playerid = $userid";
+            if ($slotid)
+                $sql .= " AND slot = $slotid";
+            
+            $this->update($sql);
 			
-				
 			
 		}catch(Exception $e) {
-			$this->endTransaction(true);
             throw $e;
         }
 	}
@@ -202,58 +209,133 @@ class DBManager {
 		
 	}
 	
-	public function takeSlot($userid, $gameid, $slot){
+	public function takeSlot($userid, $gameid, $slotid){
 	
+        $userid = $this->DBEscape($userid);
+        $gameid = $this->DBEscape($gameid);
+        $slotid = $this->DBEscape($slotid);
 		try{
 			
-			//already in slot?
-			$sql = "SELECT * FROM `B5CGM`.`tac_playeringame` WHERE gameid = $gameid AND slot = $slot";
+            $slot = $this->getSlotById($slotid, $gameid);
+            if (!$slot)
+                return false;
+            
+			//already in slot on other team?
+			$sql = "SELECT * FROM `B5CGM`.`tac_playeringame` WHERE gameid = $gameid AND teamid != ".$slot->team." AND playerid = $userid";
 			if ($this->found($sql))
-				return false;
+            {
+                $this->leaveSlot($userid, $gameid);
+            }
 			
-
-			//already in slot in another game, that has status "LOBBY"?
-			$sql = "SELECT * FROM `B5CGM`.`tac_game` g join `B5CGM`.`tac_playeringame` p on g.id = p.gameid where p.playerid = $userid and g.status = 'LOBBY';";
+			$sql = "UPDATE tac_playeringame SET playerid = $userid WHERE gameid = $gameid and slot = $slotid";
 			
-			$result = $this->query($sql);
-            				
-			foreach ($result as $value){
-						
-				$sql = "DELETE FROM `B5CGM`.`tac_playeringame` WHERE gameid = ".$value->id . " AND playerid = $userid";
-						
-				$this->update($sql);
-							
-			}
-					
-			
-			$sql = "INSERT INTO `B5CGM`.`tac_playeringame` (`gameid`,
-                `slot`,
-                `playerid`,
-                `teamid`,
-                `lastturn`,
-                `lastphase`,
-                `lastactivity`,
-                `submitLock`)
-                VALUES ( $gameid, $slot, $userid, $slot, 0, -3, now(), '0000-00-00 00:00:00')";
-			
-			$this->insert($sql);
+			$this->update($sql);
 			
 			
 		}catch(Exception $e) {
             throw $e;
         }
 	}
-	
-	public function createGame($name, $background, $maxplayers, $points, $userid){
-	
-		try{
-			$sql = "INSERT INTO `B5CGM`.`tac_game` VALUES (	null,'".$this->DBEscape($name)."',0,-2,-1,'$background',$points, 'LOBBY', 2, $userid, 0)";
-			$id = $this->insert($sql);
-			
-			return $id;
-		}catch(Exception $e) {
-            throw $e;
+    
+    public function createSlots($gameid, $input){
+        $slots = array();
+        if (is_array($input))
+            $slots = $input;
+        else 
+            $slots[] = $input;
+        
+        $stmt = $this->connection->prepare("
+            INSERT INTO 
+                tac_playeringame
+            VALUES
+            (
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                '0000-00-00 00:00:00',
+                '0000-00-00 00:00:00',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?
+            )
+
+        ");
+
+        if ($stmt)
+        {
+            foreach ($slots as $slot)
+            {
+                $stmt->bind_param(
+                    'iiiiiisiiisiii',
+                    $gameid,
+                    $slot->slot,
+                    $slot->playerid,
+                    $slot->team,
+                    $slot->lastturn,
+                    $slot->lastphase,
+                    $slot->name,
+                    $slot->points,
+                    $slot->depx,
+                    $slot->depy,
+                    $slot->deptype,
+                    $slot->depwidth,
+                    $slot->depheight,
+                    $slot->depavailable
+                );    
+                $stmt->execute();
+            }
+            $stmt->close();
         }
+    }
+	
+	public function createGame($gamename, $background, $slots, $userid){
+        $stmt = $this->connection->prepare("
+            INSERT INTO 
+                tac_game
+            VALUES
+            (
+                null,
+                ?,
+                0,
+                -2,
+                -1,
+                ?,
+                0,
+                'LOBBY',
+                ?,
+                ?,
+                '0000-00-00 00:00:00'
+            )
+        ");
+
+        if ($stmt)
+        {
+            $gamename = $this->DBEscape($gamename);
+            $background = $this->DBEscape($background);
+            $slotnum = count($slots);
+            $stmt->bind_param(
+                'ssii',
+                $gamename,
+                $background,
+                $slotnum,   
+                $userid
+            );
+            $stmt->execute();
+            $stmt->close();
+            $gameid = $this->getLastInstertID();
+        }
+        
+        $this->createSlots($gameid, $slots);
+        
+        return $gameid;
 	}
     
     public function submitCriticals($gameid, $criticals, $turn){
@@ -324,8 +406,6 @@ class DBManager {
     }
         
     public function submitFireorders($gameid, $fireOrders, $turn, $phase){
-        
-        
 
         foreach ($fireOrders as $fire){
             if ($fire->turn != $turn)
@@ -502,11 +582,17 @@ class DBManager {
     
     }
     
-    public function updatePlayerStatus($gameid, $userid, $phase, $turn){
+    public function updatePlayerStatus($gameid, $userid, $phase, $turn, $slots = null){
         try {
             $sql = "UPDATE `B5CGM`.`tac_playeringame` SET `lastturn` = $turn, `lastphase` = $phase, `lastactivity` = NOW() WHERE"
             ." gameid = $gameid AND playerid = $userid";
 
+            if ($slots){
+                $slots = array_keys($slots);
+                $slots = implode(',',$slots);
+                $sql .= " AND slot IN ($slots)";
+            }
+            
             $this->update($sql);
         }
         catch(Exception $e) {
@@ -643,7 +729,7 @@ class DBManager {
 			return array();
         
 		foreach ($games as $game){
-			$game->players = $this->getPlayersInGame($playerid, $game->id);
+			$game->slots = $this->getSlotsInGame($game->id);
 		}
 		
 		return $games;
@@ -658,7 +744,7 @@ class DBManager {
 		if ($gamedata == null)
 			return null;
 
-        $gamedata->players = $this->getPlayersInGame($playerid, $gameid);
+        $gamedata->slots = $this->getSlotsInGame($gameid);
         $this->getTacShips($gamedata);
 		$gamedata->onConstructed();
         
@@ -713,26 +799,64 @@ class DBManager {
            
     }
     
-    public function getPlayersInGame($playerid, $gameid){
-        $sql = "SELECT * FROM `B5CGM`.`tac_playeringame` pg join `B5CGM`.`player` p on p.id = pg.playerid where pg.gameid = $gameid";
-        $players = array();
-         try {
-            $result = $this->query($sql);
-            
-            if ($result == null || sizeof($result) == 0)
-                return array();
-                
-                foreach ($result as $value) {
-                    $players[$value->playerid] = new TacticalPlayer($value->playerid, $value->slot, $value->teamid, $value->lastturn, $value->lastphase, $value->username);
-                    
-                }
-            
-            }
-            catch(Exception $e) {
-                throw $e;
-            }
+    public function getSlotsInGame($gameid){
         
-        return $players;
+        $slots = array();
+        
+        $stmt = $this->connection->prepare("
+            SELECT 
+                playerid, slot, teamid, lastturn, lastphase, name, points, depx, depy, deptype, depwidth, depheight, depavailable, p.username
+            FROM 
+                tac_playeringame pg
+            LEFT JOIN 
+                player p on p.id = pg.playerid
+            WHERE 
+                gameid = ?
+        ");
+
+        if ($stmt)
+        {
+            $stmt->bind_param('i', $gameid);
+            $stmt->bind_result($playerid, $slot, $teamid, $lastturn, $lastphase, $name, $points, $depx, $depy, $deptype, $depwidth, $depheight, $depavailable, $username);
+            $stmt->execute();
+            while ($stmt->fetch())
+            {
+                $slots[$slot] = new PlayerSlot($playerid, $slot, $teamid, $lastturn, $lastphase, $name, $points, $depx, $depy, $deptype, $depwidth, $depheight, $depavailable, $username);
+            }
+            $stmt->close();
+        }
+        return $slots;
+    }
+    
+    public function getSlotById($slotid, $gameid)
+    {
+        $slot = null;
+        
+        $stmt = $this->connection->prepare("
+            SELECT 
+                playerid, slot, teamid, lastturn, lastphase, name, points, depx, depy, deptype, depwidth, depheight, depavailable, p.username
+            FROM 
+                tac_playeringame pg
+            LEFT JOIN 
+                player p on p.id = pg.playerid
+            WHERE 
+                gameid = ?
+            AND
+                slot = ?
+        ");
+
+        if ($stmt)
+        {
+            $stmt->bind_param('ii', $gameid, $slotid);
+            $stmt->bind_result($playerid, $slot, $teamid, $lastturn, $lastphase, $name, $points, $depx, $depy, $deptype, $depwidth, $depheight, $depavailable, $username);
+            $stmt->execute();
+            while ($stmt->fetch())
+            {
+                $slot = new PlayerSlot($playerid, $slot, $teamid, $lastturn, $lastphase, $name, $points, $depx, $depy, $deptype, $depwidth, $depheight, $depavailable, $username);
+            }
+            $stmt->close();
+        }
+        return $slot;
     }
     
     public function getTacShips($gamedata)
@@ -740,33 +864,29 @@ class DBManager {
         
         $starttime = time();  
         $ships = array();
-        try {
-            $stmt = $this->connection->prepare(
-                "SELECT
-                    id, playerid, name, phpclass 
-                FROM
-                    tac_ship 
-                WHERE
-                    tacgameid = ?
-                "
-            );
-            
-			if ($stmt)
+        
+        $stmt = $this->connection->prepare(
+            "SELECT
+                id, playerid, name, phpclass, slot
+            FROM
+                tac_ship 
+            WHERE
+                tacgameid = ?
+            "
+        );
+
+        if ($stmt)
+        {
+            $stmt->bind_param('i', $gamedata->id);
+            $stmt->bind_result($id, $playerid, $name, $phpclass, $slot);
+            $stmt->execute();
+            while ($stmt->fetch())
             {
-                $stmt->bind_param('i', $gamedata->id);
-                $stmt->bind_result($id, $playerid, $name, $phpclass);
-				$stmt->execute();
-				while ($stmt->fetch())
-                {
-                   $ship = new $phpclass($id, $playerid, $name, null);
-                   $ship->team = $gamedata->players[$playerid]->team;
-                   $ships[] = $ship;
-                }
-				$stmt->close();
-			}
-        }
-        catch(Exception $e) {
-            throw $e;
+                $ship = new $phpclass($id, $playerid, $name, $slot);
+                $ship->team = $gamedata->slots[$slot]->team;
+                $ships[] = $ship;
+            }
+            $stmt->close();
         }
         
         $gamedata->setShips($ships);
@@ -1242,7 +1362,7 @@ class DBManager {
 				$stmt->bind_param('ii', $gameid, $playerid);
 				$stmt->execute();
 				
-                if ($stmt->affected_rows === 1)
+                if ($stmt->affected_rows > 0)
                     $result = true;
 				
 				/* close statement */
@@ -1261,7 +1381,7 @@ class DBManager {
         try {
             $stmt = $this->connection->prepare(
                 "SELECT 
-                    g.id, g.slots
+                    g.id, g.slots, p.playerid
                 FROM 
                     tac_playeringame p
                 INNER JOIN tac_game g on g.id = p.gameid
@@ -1275,19 +1395,21 @@ class DBManager {
                     g.phase != 2
                 GROUP BY p.gameid
                 HAVING 
-                    count(p.playerid) = g.slots;"
+                    count(p.playerid) = g.slots"
             );
             
 			if ($stmt)
             {
 				$stmt->bind_param('i', $gameid);
 				$stmt->execute();
-                $stmt->bind_result($id, $slots);
+                $stmt->bind_result($id, $slots, $playerid);
 				$stmt->fetch();
 				$stmt->close();
                 
                 if ($id)
+                {
                     return true;
+                }
 				
 				
 			}
@@ -1303,38 +1425,33 @@ class DBManager {
     public function getGamesToBeDeleted( )
     {
         $ids = array();
-        try {
-            $stmt = $this->connection->prepare(
-                "SELECT 
-                    g.id
-                FROM 
-                    tac_game g
-                JOIN 
-                    tac_playeringame p
-                ON
-                    p.gameid = g.id
-                WHERE
-                    DATE_ADD(p.lastactivity, INTERVAL 1 MONTH) < NOW()
-                OR
-                    (DATE_ADD(p.lastactivity, INTERVAL 1 DAY) < NOW() 
-                    AND
-                    g.status = 'LOBBY')
-                "
-            );
-            
-			if ($stmt)
+        $stmt = $this->connection->prepare("
+            SELECT 
+                g.id
+            FROM 
+                tac_game g
+            JOIN 
+                tac_playeringame p
+            ON
+                p.gameid = g.id
+            WHERE
+                DATE_ADD(p.lastactivity, INTERVAL 1 MONTH) < NOW()
+            OR
+                (DATE_ADD(p.lastactivity, INTERVAL 1 DAY) < NOW() 
+                AND
+                g.status = 'LOBBY')
+
+        ");
+
+        if ($stmt)
+        {
+            $stmt->bind_result($id);
+            $stmt->execute();
+            while ($stmt->fetch())
             {
-                $stmt->bind_result($id);
-				$stmt->execute();
-				while ($stmt->fetch())
-                {
-                   $ids[] = $id; 
-                }
-				$stmt->close();
-			}
-        }
-        catch(Exception $e) {
-            throw $e;
+                $ids[] = $id; 
+            }
+            $stmt->close();
         }
         
         return $ids;
@@ -1449,6 +1566,79 @@ class DBManager {
             }
             $stmt->close();
         }
+    }
+    
+    public function submitChatMessage($userid, $message, $gameid = 0)
+    {
+        
+        $stmt = $this->connection->prepare("
+                INSERT INTO 
+                    chat
+                VALUES
+                (
+                    null,
+                    ?,
+                    (SELECT username FROM player WHERE id = ?),
+                    ?,
+                    now(),
+                    ?
+                )
+
+            ");
+        
+        if ($stmt)
+        {
+            $stmt->bind_param('iiis', $userid, $userid, $gameid, $message);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+    
+    public function getChatMessages($lastid, $gameid = 0)
+    {
+        $messages = array();
+        $stmt = $this->connection->prepare("
+            SELECT 
+                id, userid, username, gameid, message, time
+            FROM
+                chat
+            WHERE
+                gameid = ?
+            AND 
+                id > ?
+            ORDER BY id ASC
+        ");
+        
+        if ($stmt)
+        {
+            $stmt->bind_param('ii', $gameid, $lastid);
+            $stmt->bind_result($id, $userid, $username, $gameid, $message, $time);
+            $stmt->execute();
+            while ($stmt->fetch())
+            {
+                $messages[] = 
+                    new ChatMessage($id, $userid, $username, $gameid, $message, $time);
+            }
+            $stmt->close();
+        }
+        
+        return $messages;
+    }
+    
+    public function deleteOldChatMessages(){
+        $stmt = $this->connection->prepare("
+            DELETE FROM
+                chat
+            WHERE
+                DATE_ADD(time, INTERVAL 1 DAY) < NOW()    
+        ");
+        
+        if ($stmt)
+        {
+            $stmt->execute();
+            $stmt->close();
+        }
+        
     }
   
     //UTILS

@@ -4,9 +4,9 @@
 	if (!isset($_SESSION["user"]) || $_SESSION["user"] == false){
 		header('Location: index.php');
 	}
-	
-	if (isset($_GET["leaveslot"])){
-		Manager::leaveLobbySlot($_SESSION["user"]);
+    
+    if (isset($_GET["leave"]) && isset($_GET["gameid"])){
+		Manager::leaveLobbySlot($_SESSION["user"], $_GET["gameid"]);
 		header('Location: games.php');
 	}
 	
@@ -17,12 +17,7 @@
 		$gameid = $_GET["gameid"];
 	}
 	
-	if (isset($_GET["gameid"]) && isset($_GET["slotid"])){
-		Manager::takeSlot($_SESSION["user"], $gameid, $_GET["slotid"]);
-	}
-	
-	$gamelobbydata = Manager::getGameLobbyData($_SESSION["user"], $gameid);
-	//var_export($gamelobbydata, true);
+	$gamelobbydata = Manager::getGameLobbyData( $_SESSION["user"], $gameid);
 	if (!$gamelobbydata || $gamelobbydata->status != "LOBBY"){
 		header('Location: games.php');
 	}
@@ -54,6 +49,10 @@
 				gamedata.parseServerData(<?php print($gamelobbydataJSON); ?>);
 				gamedata.parseShips(<?php print($ships); ?>);
 				$('.readybutton').on("click", gamedata.onReadyClicked);
+                $('.leave').on("click", gamedata.onLeaveClicked);
+                $('.close').on("click", gamedata.onLeaveSlotClicked);
+                $('.selectslot').on("click", gamedata.onSelectSlotClicked);
+                $('.takeslot').on("click", gamedata.clickTakeslot);
 				ajaxInterface.startPollingGamedata();
 			});
 		
@@ -67,22 +66,23 @@
 
 			<div><span>TEAM 1</span></div>
 			<div id="team1" class="subpanel slotcontainer">
-				<div class="slot" data-slotid="1" data-playerid=""><span>SLOT 1:</span><span class="playername"></span><span class="status">READY</span><span class="takeslot clickable">Take slot</span></div>
 			</div>
 			
 			<div><span>TEAM 2</span></div>
-			<div id="team1" class="subpanel slotcontainer">
-				<div class="slot" data-slotid="2" data-playerid=""><span>SLOT 2:</span><span class="playername"></span><span class="status">READY</span><span class="takeslot clickable">Take slot</span></div>
-			</div>
+			<div id="team2" class="subpanel slotcontainer">
+            </div>
+            
+            <!--<div class="slot" data-slotid="2" data-playerid=""><span>SLOT 2:</span></div>
+			-->
 			
-			<a href="gamelobby.php?leaveslot">LEAVE GAME</a>
+			<span class="clickable leave">LEAVE GAME</a>
 			
 		</div>
 		<div class="panel large buy" style="display:none;">
 			<div><span class="panelheader" style="padding-right:20px;">PURCHASE YOUR FLEET</span>
 				<span class="panelsubheader current">0</span>
 				<span class="panelsubheader">/</span>
-				<span class="panelsubheader max"><?php print($gamelobbydata->points)?></span>
+				<span class="panelsubheader max">0</span>
 				<span class="panelsubheader">points</span>
 				</div>
 			<table class="store" style="width:100%;">
@@ -96,6 +96,45 @@
 			<div><span class="clickable readybutton">READY</span></div>
 			
 		</div>
+                    
+        <div id="globalchat" class="panel large" style="height:150px;">
+        <?php 
+            $chatgameid = 0;
+            $chatelement = "#globalchat";
+            include("chat.php")
+        ?>
+        </div>
+                    
+    <div id="slottemplatecontainer" style="display:none;">
+        <div class="slot" >
+            <div class="close"></div>
+            <div>
+                <span class="smallSize headerSpan">NAME:</span>
+                <span class ="value name"></span>
+                <span class="smallSize headerSpan">POINTS:</span>
+                <span class ="value points"></span>
+                <span class="smallSize headerSpan">PLAYER:</span>
+                <span class="playername"></span><span class="status">READY</span>
+                <span class="takeslot clickable">Take slot</span>
+                <span class="selectslot clickable">SELECT</span>
+            </div>
+            <div>
+                <span class="smallSize headerSpan">DEPLOYMENT:</span>
+                <span>X:</span>
+                <span class ="value depx"></span>
+                <span>Y:</span>
+                <span class ="value depy"></span>
+                <span>Type:</span>
+                <span class ="value deptype"></span>
+                <span>Width:</span>
+                <span class ="value depwidth"></span>
+                <span>Height:</span>
+                <span class ="value depheight"></span>
+                <span>Turn available:</span>
+                <span class ="value depavailable"></span>
+            </div>
+        </div>
+    </div>
 
 	</body>
 </html>

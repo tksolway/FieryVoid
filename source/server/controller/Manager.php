@@ -11,6 +11,9 @@ class Manager{
 
     private static $dbManager = null;
 
+    /**
+     *  @return DBManager dbManager
+     */
     private static function initDBManager() {
         if (self::$dbManager == null)
             self::$dbManager = new DBManager("localhost", 3306, "B5CGM", "aatu", "Kiiski");
@@ -31,11 +34,11 @@ class Manager{
         }
     }
     
-    public static function leaveLobbySlot($user){
+    public static function leaveLobbySlot($user, $gameid, $slotid = null){
         try {
             self::initDBManager();
-            self::$dbManager->leaveSlot($user);
-            
+            self::$dbManager->leaveSlot($user, $gameid, $slotid);
+            self::$dbManager->deleteEmptyGames();
         }
         catch(exception $e) {
             throw $e;
@@ -47,16 +50,9 @@ class Manager{
         try {
             self::initDBManager();
             
-            if ($targetGameId &&  is_numeric($targetGameId) && $targetGameId > 0 )
+            if ($targetGameId &&  is_numeric($targetGameId) && $targetGameId > 0 ){
                 return self::getTacGamedata($targetGameId, $userid, 0, 0, -1);
-            
-            $gameid = self::$dbManager->shouldBeInGameLobby($userid);
-            if ($gameid == false)
-                return null;
-                
-            
-                                
-            return self::getTacGamedata($gameid, $userid, 0, 0, -1);
+            }
         }
         catch(Exception $e) {
             Debug::error($e);
@@ -98,16 +94,27 @@ class Manager{
         }
     }
     
-    public static function createGame($name, $bg, $maxplayers, $points, $userid){
-    
+    public static function createGame($userid, $data){
+        $data = json_decode($data, true);
+        
+        $gamename = $data["gamename"];
+        $background = $data["background"];
+        $slots = array();
+        
+        foreach ($data["slots"] as $slot){
+            $slots[] = new PlayerSlotFromJSON($slot);
+        }
+        
         try {
             self::initDBManager();
-            $gameid = self::$dbManager->createGame($name, $bg, $maxplayers, $points, $userid);
+            self::$dbManager->startTransaction();
+            $gameid = self::$dbManager->createGame($gamename, $background, $slots, $userid);
             self::takeSlot($userid, $gameid, 1);
-            
+            self::$dbManager->endTransaction(false);
             return $gameid;
         }
         catch(exception $e) {
+            self::$dbManager->endTransaction(true);
             throw $e;
         }
     
@@ -146,9 +153,6 @@ class Manager{
     }
     
     public static function canCreateGame($userid){
-        if (self::shouldBeInGame($userid))
-            return false;
-        
         return true;
     }
     
@@ -180,7 +184,7 @@ class Manager{
         self::advanceGameState($userid, $gameid);
 
         if (self::$dbManager->isNewGamedata($gameid, $turn, $phase, $activeship)){
-            ////Debug("GAME: $gameid Player: $userid requesting gamedata, new found.");
+            Debug::log("GAME: $gameid Player: $userid requesting gamedata, new found.");
             $gamedata = self::$dbManager->getTacGamedata($userid, $gameid);
             if ($gamedata == null)
                 return null;
@@ -190,10 +194,7 @@ class Manager{
             return null;
         }
         
-        
         return $gamedata;
-        
-        
     }
     
     public static function getTacGamedataJSON($gameid, $userid, $turn, $phase, $activeship){
@@ -222,7 +223,7 @@ class Manager{
     
     }
             
-    public static function submitTacGamedata($gameid, $userid, $turn, $phase, $activeship, $ships){
+    public static function submitTacGamedata($gameid, $userid, $turn, $phase, $activeship, $ships, $slotid = 0){
         try {
             //file_put_contents('/tmp/fierylog', "Gameid: $gameid submitTacGamedata ships:". var_export($ships, true) ."\n\n", FILE_APPEND);
             self::initDBManager();  
@@ -270,7 +271,7 @@ class Manager{
             }else if ($gdS->phase == 4){
                 $ret = self::handleFinalOrders($ships, $gdS);
             }else if ($gdS->phase == -2){
-                $ret = self::handleBuying($ships, $gdS);
+                $ret = self::handleBuying($ships, $gdS, $slotid);
             }else if ($gdS->phase == -1){
                 $ret = self::handleDeployment($ships, $gdS);
             }
@@ -295,34 +296,35 @@ class Manager{
         
     }
     
-    private static function handleBuying(  $ships, $gamedata ){
+    private static function handleBuying(  $ships, $gamedata, $slotid ){
     
-
-        $points = 0;
-        foreach ($ships as $ship){
-            $points += $ship->pointCost;
-        }
-        
-        if ($points > $gamedata->points)    
-            throw new Exception("Fleet too expensive.");
-    
+        $seenSlots = array();
+        foreach($gamedata->slots as $slot)
+        {
+            if ($gamedata->hasAlreadySubmitted($gamedata->forPlayer, $slot->slot))
+                continue;
             
-        foreach ($ships as $ship){
-            if ($ship->userid == $gamedata->forPlayer){
-                self::$dbManager->submitShip($gamedata->id, $ship, $gamedata->forPlayer);
+            $points = 0;
+            foreach ($ships as $ship){
+                if ($ship->slot != $slot->slot)
+                    continue;
+                
+                $seenSlots[$slot->slot] = true;
+                
+                $points += $ship->pointCost;
+                
+                if ($ship->userid == $gamedata->forPlayer){
+                    self::$dbManager->submitShip($gamedata->id, $ship, $gamedata->forPlayer);
+                }
             }
+
+            if ($points > $slot->points)    
+                throw new Exception("Fleet too expensive.");
         }
-        
     
-        self::$dbManager->updatePlayerStatus($gamedata->id, $gamedata->forPlayer, $gamedata->phase, $gamedata->turn);
-        
-        if (sizeof($gamedata->players)<2){
-            return true;
-        }
-        
+        self::$dbManager->updatePlayerStatus($gamedata->id, $gamedata->forPlayer, $gamedata->phase, $gamedata->turn, $seenSlots);
         
         return true;
-        
     }
     
     
@@ -512,11 +514,10 @@ class Manager{
         
         foreach ($servergamedata->ships as $ship){
             
-            $player = $servergamedata->getPlayerById($ship->userid);
             $y = 0;
             $t = 0;
             $h = 3;
-            if ($player->team == 1){
+            if ($ship->team == 1){
                 $t1++;
                 $t = $t1;
                 $h = 0;
@@ -533,7 +534,7 @@ class Manager{
             
             $x = -50;
             
-            if ($player->team == 2){
+            if ($ship->team == 2){
                 $x=50;
             }
             
@@ -733,7 +734,7 @@ class Manager{
             
             
             
-            $ship = new $value["phpclass"]($value["id"], $value["userid"], $value["name"], null);
+            $ship = new $value["phpclass"]($value["id"], $value["userid"], $value["name"], $value["slot"]);
             $ship->setMovements($movements);    
             $ship->EW = $EW;
             
