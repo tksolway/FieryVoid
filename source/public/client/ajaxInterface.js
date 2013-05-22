@@ -139,6 +139,7 @@ window.ajaxInterface = {
             gameid: gamedata.gameid,
             playerid: gamedata.thisplayer,
             slotid: gamedata.selectedSlot,
+            status: gamedata.status,
             ships: JSON.stringify(tidyships)
         };
   
@@ -240,6 +241,7 @@ window.ajaxInterface = {
             gameid: gamedata.gameid,
             playerid: gamedata.thisplayer,
             slotid: gamedata.selectedSlot,
+            status: gamedata.status,
             ships: JSON.stringify(tidyships)
         };
   
@@ -276,14 +278,16 @@ window.ajaxInterface = {
 	
     startPollingGamedata: function(){
         
-        if (gamedata.poll != null){
-			console.log("starting to poll, but poll is not null");
+        if(gamedata.status != "SURRENDERED"){
+            if (gamedata.poll != null){
+                console.log("starting to poll, but poll is not null");
             return;
-			}
-           
-        ajaxInterface.pollcount = 0;
-            
-        ajaxInterface.pollGamedata();
+        }
+
+            ajaxInterface.pollcount = 0;
+
+            ajaxInterface.pollGamedata();
+        }
     },
     
     stopPolling: function(){
@@ -361,6 +365,7 @@ window.ajaxInterface = {
                 activeship: gamedata.activeship,
                 gameid: gamedata.gameid,
                 playerid: gamedata.thisplayer,
+                status: gamedata.status,
                 time: new Date().getTime()
             },
             success : ajaxInterface.successRequest,

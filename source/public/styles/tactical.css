@@ -635,6 +635,10 @@ body.phase1 #botPanel .ewentry .button2{
     color:#DEEBFF;
 }
 
+.logUiEntry.gameOptions{
+    
+}
+
 #logTab.logUiEntry{
     left:-1px;
 }
@@ -645,6 +649,50 @@ body.phase1 #botPanel .ewentry .button2{
 
 #globalChatTab.logUiEntry{
     left:208px;
+}
+
+#globalGameOptions.logUiEntry{
+    left:312px;
+}
+
+.gameOptionIcon{
+    z-index:10000;
+    position: relative;
+    margin:10px;
+    border-radius: 3px;
+    width: 30px;
+    height: 30px;
+    display: inline-block;
+    border: 1px solid #84a5ce;
+}
+
+.gameOptionEntry{
+    position: relative;
+    margin:10px;
+    font-size:12px;
+    border-radius: 3px;
+    border: 1px solid #84a5ce;
+    text-align: center;
+    width:200px;
+    height: 25px;
+    line-height: 25px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.gameOptionIcon.selectedEntry{
+    background-color: #84a5ce;
+    border: 1px solid #FFFFFF;
+    cursor:pointer;
+}
+
+.gameOptionRemark{
+    margin-left: 50px;
+    display:inline-block;
+    line-height: 25px;
+    vertical-align: middle;
+    font-size:14px;
+    display: inline-block;
 }
 
 #logcontainer #chat{

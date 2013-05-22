@@ -171,7 +171,7 @@ gamedata = {
         if (gamedata.waiting == true)
             return;     
         
-        if(gamedata.status == "FINISHED")
+        if(gamedata.status == "FINISHED" || gamedata.status == "SURRENDERED")
             return;
         
         confirm.confirm("Are you sure you wish to COMMIT YOUR TURN?", gamedata.doCommit);
@@ -217,6 +217,15 @@ gamedata = {
     
             
     },
+
+    onSurrenderClicked: function(){
+        confirm.confirm("Are you certain you wish to SURRENDER?", gamedata.doSurrender);
+    },
+    
+    doSurrender:function(){
+        gamedata.status = "SURRENDERED";
+        ajaxInterface.submitGamedata();
+    },
     
     onCancelClicked: function(e){
         if (gamedata.gamephase == 2){
@@ -261,6 +270,9 @@ gamedata = {
         
         if (gamedata.gamephase == -1)
             return "DEPLOYMENT";
+        
+        if (gamedata.gamephase == 99)
+            return "GAME SURRENDERED";
             
         return "ERROR"
     },
@@ -385,13 +397,19 @@ gamedata = {
             
     checkGameStatus: function(){
         $("#phaseheader .turn.value").html("TURN: " + gamedata.turn+ ",");
-        $("#phaseheader .phase.value").html(gamedata.getPhasename());
-        $("#phaseheader .activeship.value").html(gamedata.getActiveShipName());
+        
+        if(gamedata.status == "SURRENDERED"){
+            $("#phaseheader .phase.value").html(" Game was surrendered ");
+        }
+        else{
+            $("#phaseheader .phase.value").html(gamedata.getPhasename());
+            $("#phaseheader .activeship.value").html(gamedata.getActiveShipName());
+        }
         
         var commit = $(".committurn");
         var cancel = $(".cancelturn");
         
-        if (gamedata.status == "FINISHED"){
+        if (gamedata.status == "FINISHED" || gamedata.status == "SURRENDERED"){
             cancel.hide();
             commit.hide();
             $("#phaseheader .finished").show();
@@ -520,7 +538,8 @@ gamedata = {
             console.log(shipManager.getShipPositionInWindowCo(gamedata.ships[i]));
         }
     }
-    
 }
+    
+
 
 

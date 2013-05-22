@@ -74,6 +74,7 @@
 	<script src="client/power.js"></script>
     <script src="client/deployment.js"></script>
     <script src="client/UI/shipMovement.js"></script>
+    <script src="client/UI/gameOptions.js"></script>
     <script src="client/UI/infowindow.js"></script>
 	<script src="client/UI/systemInfo.js"></script>
     <script src="client/animation.js"></script>
@@ -673,6 +674,9 @@
         <div id="globalChatTab" data-select="#globalchat" class="logUiEntry">
             <span>GLOBAL CHAT</span>
         </div>
+        <div id="globalGameOptions" data-select="#gameoptions" class="logUiEntry">
+            <span>GAME OPTIONS</span>
+        </div>
     </div>
     <div id="log" class="logPanelEntry">
 
@@ -691,6 +695,11 @@
             $chatelement = "#globalchat";
             include("chat.php")
         ?>
+    </div>
+    
+    <div id="gameoptions" class="logPanelEntry" style="display:none;">
+        <img src="img/surrender_icon.png" id="surrenderIcon" class="gameOptionIcon">
+        <div class="gameOptionRemark">Surrender this match</div>
     </div>
 </div>
 

@@ -118,7 +118,10 @@ class TacGamedata{
     }
     
     public function isFinished(){
-
+        if($this->status == "FINISHED" || $this->status == "SURRENDERED"){
+            return true;
+        }
+        
         foreach ($this->slots as $slot)
         {
             //still ships coming in

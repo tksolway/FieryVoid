@@ -17,7 +17,7 @@ infowindow = {
         
         var h = $("h2", e);
 		
-		if (gamedata.status == "FINISHED"){
+		if (gamedata.status == "FINISHED" || gamestatus.status == "SURRENDERED"){
 			h.html("TURN " + gamedata.turn + ", GAME OVER");
 		}else{
         

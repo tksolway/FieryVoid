@@ -237,12 +237,11 @@ class Manager{
     
     }
             
-    public static function submitTacGamedata($gameid, $userid, $turn, $phase, $activeship, $ships, $slotid = 0){
+    public static function submitTacGamedata($gameid, $userid, $turn, $phase, $activeship, $ships, $status, $slotid = 0){
         try {
             //file_put_contents('/tmp/fierylog', "Gameid: $gameid submitTacGamedata ships:". var_export($ships, true) ."\n\n", FILE_APPEND);
             self::initDBManager();  
             $starttime = time();
-            
             
             $ships = self::getShipsFromJSON($ships);
             
@@ -260,34 +259,42 @@ class Manager{
             self::$dbManager->startTransaction();
             
             $gdS = self::$dbManager->getTacGamedata($userid, $gameid);
-            
-            if ($gameid != $gdS->id || $turn != $gdS->turn || $phase != $gdS->phase)
-                throw new Exception("Unexpected orders");
-                
-            if ($gdS->hasAlreadySubmitted($userid))
-                throw new Exception("Turn already submitted or wrong user");
-                
-            if ($gdS->status == "FINISHED")
-                throw new Exception("Game is finished");
-            
-            //print(var_dump($ships));
-            
-            if ($gdS->phase == 1){
-                 $ret = self::handleInitialActions($ships, $gdS);
-            }else if ($gdS->phase == 2){
-                if ($activeship == $gdS->activeship){
-                    $ret = self::handleMovement($ships, $gdS);
-                }else{
-                    throw new Exception("phase and active ship does not match");
+
+            if($status != "SURRENDERED" && $gdS->status == "SURRENDERED"){
+                if ($gdS->status == "FINISHED")
+                    throw new Exception("Game is finished");
+
+                if ($gameid != $gdS->id || $turn != $gdS->turn || $phase != $gdS->phase)
+                    throw new Exception("Unexpected orders");
+
+                if ($gdS->hasAlreadySubmitted($userid))
+                    throw new Exception("Turn already submitted or wrong user");
+
+                //print(var_dump($ships));
+          
+                if ($gdS->phase == 1){
+                     $ret = self::handleInitialActions($ships, $gdS);
+                }else if ($gdS->phase == 2){
+                    if ($activeship == $gdS->activeship){
+                        $ret = self::handleMovement($ships, $gdS);
+                    }else{
+                        throw new Exception("phase and active ship does not match");
+                    }
+                }else if ($gdS->phase == 3){
+                    $ret = self::handleFiringOrders($ships, $gdS);
+                }else if ($gdS->phase == 4){
+                    $ret = self::handleFinalOrders($ships, $gdS);
+                }else if ($gdS->phase == -2){
+                    $ret = self::handleBuying($ships, $gdS, $slotid);
+                }else if ($gdS->phase == -1){
+                    $ret = self::handleDeployment($ships, $gdS);
                 }
-            }else if ($gdS->phase == 3){
-                $ret = self::handleFiringOrders($ships, $gdS);
-            }else if ($gdS->phase == 4){
-                $ret = self::handleFinalOrders($ships, $gdS);
-            }else if ($gdS->phase == -2){
-                $ret = self::handleBuying($ships, $gdS, $slotid);
-            }else if ($gdS->phase == -1){
-                $ret = self::handleDeployment($ships, $gdS);
+            }
+            else
+            {
+                $gdS->status = $status;
+                $gdS->phase = 99;
+                self::$dbManager->updateGamedata($gdS);
             }
                         
             self::$dbManager->endTransaction(false);
@@ -456,31 +463,37 @@ class Manager{
             $gamedata = self::$dbManager->getTacGamedata($playerid, $gameid);
             $phase = $gamedata->phase;
             
-            if ($phase == 1){
-                 self::startMovement($gamedata);
-            }else if ($phase == 2){
-                //Because movement does not have simultaenous orders, this is handled in handleMovement
-            }else if ($phase == 3){
-                   self::startEndPhase($gamedata);
-            }else if ($phase == 4){
-                self::changeTurn($gamedata);
-            }else if ($phase == -2){
-                self::startGame($gamedata);
-            }else if ($phase == -1){
-                self::startInitialOrders($gamedata);
-            }
-            
-            if (TacGamedata::$currentPhase > 0){
-                foreach ($gamedata->ships as $ship)
-                {
-                    foreach ($ship->systems as $system)
-                    {
-                        $system->onAdvancingGamedata($ship);
-                    }
+            if($gamedata->status != "SURRENDERED"){
+                if ($phase == 1){
+                     self::startMovement($gamedata);
+                }else if ($phase == 2){
+                    //Because movement does not have simultaenous orders, this is handled in handleMovement
+                }else if ($phase == 3){
+                       self::startEndPhase($gamedata);
+                }else if ($phase == 4){
+                    self::changeTurn($gamedata);
+                }else if ($phase == -2){
+                    self::startGame($gamedata);
+                }else if ($phase == -1){
+                    self::startInitialOrders($gamedata);
                 }
 
+                if (TacGamedata::$currentPhase > 0){
+                    foreach ($gamedata->ships as $ship)
+                    {
+                        foreach ($ship->systems as $system)
+                        {
+                            $system->onAdvancingGamedata($ship);
+                        }
+                    }
+
+                    self::$dbManager->updateSystemData(SystemData::$allData);
+                }
+            }
+            else{
                 self::$dbManager->updateSystemData(SystemData::$allData);
             }
+            
             self::$dbManager->endTransaction(false);
             self::$dbManager->releaseGameSubmitLock($gameid);
             
@@ -662,8 +675,12 @@ class Manager{
         $gamedata->setActiveship(-1);
         $gamedata->status = "ACTIVE";
         
-        if ($gamedata->turn > 1 && $gamedata->isFinished())
+        if (($gamedata->turn > 1 && $gamedata->isFinished())
+                || $this->status == "SURRENDERED"){
             $gamedata->status = "FINISHED";
+            self::$dbManager->updateGamedata($gamedata);
+            return;
+        }
             
         self::generateIniative($gamedata);
         self::$dbManager->updateGamedata($gamedata);

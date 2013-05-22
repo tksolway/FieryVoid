@@ -13,12 +13,13 @@
 			$turn = $_POST["turn"];
 			$phase = $_POST["phase"];
 			$activeship = $_POST["activeship"];
+                        $status = $_POST["status"];
 			$ships = $_POST["ships"];
             $slotid = $_POST["slotid"];
-			
+
             //file_put_contents('/tmp/fierylog', "Gameid: $gameid gamedata.php ships:". var_export($_POST["ships"], true) ."\n\n", FILE_APPEND);
             
-			$ret = Manager::submitTacGamedata($gameid, $playerid, $turn, $phase, $activeship, $ships, $slotid);
+			$ret = Manager::submitTacGamedata($gameid, $playerid, $turn, $phase, $activeship, $ships, $status, $slotid);
 			
 			
 		}else if (isset($_GET["gameid"])){
@@ -26,6 +27,7 @@
 			$gameid = $_GET["gameid"];
 			$turn = $_GET["turn"];
 			$phase = $_GET["phase"];
+                        $status = $_GET["status"];
 			$activeship = $_GET["activeship"];
 
 			$ret = Manager::getTacGamedataJSON($gameid, $playerid, $turn, $phase, $activeship);
