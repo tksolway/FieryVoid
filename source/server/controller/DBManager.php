@@ -274,7 +274,7 @@ class DBManager {
             foreach ($slots as $slot)
             {
                 $stmt->bind_param(
-                    'iiiiiisiiisiii',
+                    'iiiiiisiddsiii',
                     $gameid,
                     $slot->slot,
                     $slot->playerid,

@@ -119,8 +119,10 @@ if (! isset($chatelement))
                         thisChat = "globalChatTab";
                     }
 
-                    if(!document.getElementById(thisChat).classList.contains("selected")){
-                        document.getElementById(thisChat).classList.add("newMessage");
+                    if(document.getElementById(thisChat) != null){
+                        if(!document.getElementById(thisChat).classList.contains("selected")){
+                            document.getElementById(thisChat).classList.add("newMessage");
+                        }
                     }
                 }
                 

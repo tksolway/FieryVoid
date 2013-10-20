@@ -139,7 +139,7 @@
                 <div>
                     <span class="smallSize headerSpan">DEPLOYMENT:</span>
                     <span>X:</span>
-                    <input class ="depx tinySize" data-validation="^-{0,1}[0-9]+$" data-default ="0" type="text" name="depx" value="0">
+                    <input class ="depx tinySize" data-validation="^-{0,1}[0-9]*\.?[0-9]+$" data-default ="0" type="text" name="depx" value="0">
                     <span>Y:</span>
                     <input class ="depy tinySize" type="text" name="depy" value="0">
                     <span>Type</span>
