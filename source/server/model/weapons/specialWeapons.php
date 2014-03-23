@@ -126,7 +126,7 @@
         
 			
         public $rangePenalty = 2;
-        public $fireControl = array(2, 2, 4); // fighters, <=mediums, <=capitals 
+        public $fireControl = array(4, 2, 2); // fighters, <=mediums, <=capitals 
 
 
 		function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
@@ -153,11 +153,8 @@
 				$crit = new OutputReduced1(-1, $ship->id, $reactor->id, "OutputReduced1", $gamedata->turn);
 				$crit->updated = true;
 				$reactor->criticals[] =  $crit;
-			}else if ($system->powerReq > 0){
-				$crit = new ForcedOfflineOneTurn(-1, $ship->id, $system->id, "ForcedOfflineOneTurn", $gamedata->turn);
-				$crit->updated = true;
-				$system->criticals[] =  $crit;
-			
+			}else if ($system->powerReq > 0 || $system->canOffLine ){
+				$system->addCritical($ship->id, "ForcedOfflineOneTurn", $gamedata);
 			}
 			
 			parent::onDamagedSystem($ship, $system, $damage, $armour, $gamedata, $fireOrder);

@@ -432,13 +432,16 @@ shipWindowManager = {
                 if (ship.flight){
                     flightWindowManager.setData(ship, system, shipwindow);
                 }else{
-                    if(system.duoWeapon){
+                    if(system.duoWeapon ){
                         for(var i in system.weapons){
                             shipWindowManager.setSystemData(ship, system.weapons[i], shipwindow)
                         }
+//                    }
+//                    else if(system.dualWeapon){
+  //                      shipWindowManager.setSystemData(ship, system.weapons[system.firingMode], shipwindow);
+                    } else{
+                        shipWindowManager.setSystemData(ship, system, shipwindow);
                     }
-
-                    shipWindowManager.setSystemData(ship, system, shipwindow);
 
                     if (system.name == "scanner"){
                         shipWindowManager.addEW(ship, shipwindow);
@@ -463,7 +466,7 @@ shipWindowManager = {
                         var system = ship.systems[i];
                         shipWindowManager.setSystemData(ship, system, shipwindow);
 
-                        if(system.duoWeapon){
+                        if(system.duoWeapon || system.dualWeapon){
                             for(var i in system.weapons){
                                 shipWindowManager.setSystemData(ship, system.weapons[i], shipwindow)
                             }
@@ -575,6 +578,9 @@ shipWindowManager = {
             if(system.duoWeapon){
                 shipWindowManager.addDuoSystem(ship, system, systemwindow);
             }
+            else if(system.dualWeapon){
+                shipWindowManager.addDualSystem(ship, system, systemwindow);
+            }
             else{
                 shipWindowManager.addRegularSystem(ship, system, systemwindow);
             }
@@ -583,11 +589,14 @@ shipWindowManager = {
         addRegularSystem:function (ship, system, systemwindow){
             var icon = systemwindow.find(".systemcontainer").html("");
             icon.removeClass("duosystem");
+            icon.removeClass("dualsystem");
             icon.addClass("regular");
             var icon_template = $("#systemtemplatecontainer .system.regular .icon");
             icon_template.clone(true).appendTo(icon);
             icon_template = $("#systemtemplatecontainer .system.regular .health.systembarcontainer");
             icon_template.clone(true).appendTo(icon);
+
+            var iconplace = systemwindow.find(".icon");
 
             systemwindow.addClass(system.name);
             if (system.iconPath){
@@ -605,16 +614,37 @@ shipWindowManager = {
                 systemwindow.addClass("weapon");
             }
 	
+            systemwindow.find(".off").off("click", shipManager.power.onOfflineClicked);
+            systemwindow.find(".on").off("click", shipManager.power.onOnlineClicked);
+            systemwindow.off("mouseover", weaponManager.onWeaponMouseover);
+            systemwindow.off("mouseout", weaponManager.onWeaponMouseOut);
+            systemwindow.off("click", shipWindowManager.clickSystem);
+            
+            systemwindow.find(".mode").off("click", shipWindowManager.onModeClicked);
+            
+            systemwindow.find(".off").on("click", shipManager.power.onOfflineClicked);
+            systemwindow.find(".on").on("click", shipManager.power.onOnlineClicked);
             systemwindow.on("mouseover", weaponManager.onWeaponMouseover);
             systemwindow.on("mouseout", weaponManager.onWeaponMouseOut);
             systemwindow.on("click", shipWindowManager.clickSystem);
             
-            $(".system .icon .UI .mode").on("click", shipWindowManager.onModeClicked);
+            systemwindow.find(".mode").on("click", shipWindowManager.onModeClicked);
+//            $(".system .icon .UI").on("click", shipWindowManager.onModeClicked);
+        },
+
+        addDualSystem: function (ship, system, dualwindow){
+            var dualsystem = system.weapons[system.firingMode];
+            shipWindowManager.addRegularSystem(ship, dualsystem, dualwindow);
+            dualwindow.find(".systemcontainer").removeClass("duosystem");
+            dualwindow.find(".systemcontainer").removeClass("regular");
+            dualwindow.find(".systemcontainer").addClass("dualsystem");
+            dualwindow.addClass("parentsystem_"+dualsystem.parentId);
         },
         
 	addDuoSystem:function (ship, system, duowindow){
             var icon = duowindow.find(".systemcontainer").html("");
             icon.addClass("duosystem");
+            icon.addClass("dualsystem");
             icon.removeClass("regular");
             var icon_template = $("#systemtemplatecontainer .system.regular .icon");
             icon_template.clone(true).appendTo(icon);
@@ -679,10 +709,12 @@ setSystemData: function(ship, system, shipwindow){
     system = shipManager.systems.initializeSystem(system);
     
     var systemwindow = shipwindow.find(".system_"+system.id);
- 
-    if (system.dualWeapon && !system.duoWeapon){
-        systemwindow.find(".icon").css("background-image", "url(./img/systemicons/"+system.name +".png)");
-    }
+    
+//    if (system.dualWeapon && !system.duoWeapon){
+//        systemwindow = shipwindow.find(".system_"+system.parentId);
+//        shipWindowManager.addRegularSystem(ship, system, systemwindow);
+//        systemwindow.find(".icon").css("background-image", "url(./img/systemicons/"+system.name +".png)");
+//    }
     
  /*   if (system.duoWeapon){
         // Set the info of one of the weapons.
@@ -734,9 +766,10 @@ setSystemData: function(ship, system, shipwindow){
             systemwindow.removeClass("selected");
         }
         
-        if (firing){
+        if (firing   && !(systemwindow.hasClass("loading"))){
             systemwindow.addClass("firing");
         }else{
+            firing = false;
             systemwindow.removeClass("firing");
         }
         
@@ -746,15 +779,24 @@ setSystemData: function(ship, system, shipwindow){
             systemwindow.removeClass("ballistic");
         }
 	
-        /* plopje
-        if (!firing && Object.keys(system.firingModes).length > 1)
+        if (!firing && (Object.keys(system.firingModes).length > 1 || system.dualWeapon))
         {
             systemwindow.addClass("modes");
+
+            var modebutton =  $(".modes", systemwindow);
+         
+            if(system.dualWeapon){
+                var parentSystem = shipManager.systems.getSystem(ship, system.parentId);
+                modebutton.html("<span>"+parentSystem.firingModes[parentSystem.firingMode].substring(0, 1)+"</span>");
+            }else{
+                modebutton.html("<span>"+system.firingModes[system.firingMode].substring(0, 1)+"</span>");
+            }
             
-            var modebutton =  $(".mode", systemwindow);
+
+//            var modebutton =  $(".modes", systemwindow);
             
-            modebutton.html("<span>"+system.firingModes[system.firingMode].substring(0, 1)+"</span>");
-        } */
+//            modebutton.html("<span>"+system.firingModes[system.firingMode].substring(0, 1)+"</span>");
+        }
         
         if (firing && system.canChangeShots){
             var fire = weaponManager.getFiringOrder(ship, system);
@@ -823,7 +865,7 @@ setSystemData: function(ship, system, shipwindow){
 	}
 
         // plopje
-        if (!firing && Object.keys(system.firingModes).length > 1)
+        if (!firing && (Object.keys(system.firingModes).length > 1 || system.dualWeapon))
         {
             if(!systemwindow.hasClass("modes")){
                 systemwindow.addClass("modes");
@@ -831,7 +873,13 @@ setSystemData: function(ship, system, shipwindow){
 
             var modebutton =  $(".mode", systemwindow);
 
-            modebutton.html("<span>"+system.firingModes[system.firingMode].substring(0, 1)+"</span>");
+            if(system.dualWeapon){
+                var parentSystem = shipManager.systems.getSystem(ship, system.parentId);
+                modebutton.html("<span>"+parentSystem.firingModes[parentSystem.firingMode].substring(0, 1)+"</span>");
+            }else{
+                modebutton.html("<span>"+system.firingModes[system.firingMode].substring(0, 1)+"</span>");
+            }
+
         }
     }else if (system.name == "thruster"){
         systemwindow.data("direction", system.direction);
@@ -913,7 +961,7 @@ setSystemData: function(ship, system, shipwindow){
 
 		
 		if (shipManager.movement.isTurn(movement)){
-			var turndelay = shipManager.movement.calculateTurndelay(ship, movement);
+			var turndelay = shipManager.movement.calculateTurndelay(ship, movement, movement.speed);
 			additionally = " Additionally, you can assign extra thrust to lower the turn delay to minimum of 1. Current turndelay of this turn will be " 
 			+ (turndelay) + ".";
 		}

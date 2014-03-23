@@ -27,35 +27,37 @@ class SystemData
     
     public static function addDataForSystem($systemid, $subsystem, $shipid, $data)
     {
-        if (!isset(self::$allData[$systemid."_".$subsystem."_".$shipid]))
+        // with new dualWeapon implementation: ignore subsystem
+        if (!isset(self::$allData[$systemid."_0_".$shipid]))
         {
-             $systemdata = new SystemData($systemid, $subsystem, $shipid);
+             $systemdata = new SystemData($systemid, 0, $shipid);
              $systemdata->addData($data);
              self::$allData[] = $systemdata;
         }
         else
         {
-            self::$allData[$systemid."_".$subsystem."_".$shipid]->addData($data);
+            self::$allData[$systemid."_0_".$shipid]->addData($data);
         }
     }
 }
 
 class WeaponLoading
 {
-    public $loading, $extrashots, $loadedammo, $overloading, $loadingtime;
+    public $loading, $extrashots, $loadedammo, $overloading, $loadingtime, $firingmode;
     
-    public function __construct($loading, $extrashots, $loadedammo, $overloading, $loadingtime = 0)
+    public function __construct($loading, $extrashots, $loadedammo, $overloading, $loadingtime = 0, $firingmode = 1)
     {
         $this->loading = (int)$loading;
         $this->extrashots = (int)$extrashots;
         $this->loadedammo = (int)$loadedammo;
         $this->overloading = (int)$overloading;
         $this->loadingtime = (int)$loadingtime;
+        $this->firingmode = (int)$firingmode;
     }
     
     public function toJSON()
     {
-        return '"loading":{"1":"'.$this->loading.'","2":"'.$this->extrashots.'","3":"'.$this->loadedammo.'","4":"'.$this->overloading.'","5":"'.$this->loadingtime.'"}';
+        return '"loading":{"1":"'.$this->loading.'","2":"'.$this->extrashots.'","3":"'.$this->loadedammo.'","4":"'.$this->overloading.'","5":"'.$this->loadingtime.'","6":"'.$this->firingmode.'"}';
     }
 }
 
@@ -104,7 +106,7 @@ class PlayerSlotFromJSON extends PlayerSlot{
 
 class MovementOrder{
 
-    public $id, $type, $x, $y, $xOffset, $yOffset, $facing, $heading, $speed, $value;
+    public $id, $type, $x, $y, $xOffset, $yOffset, $facing, $heading, $speed, $value, $at_initiative;
     public $animating = false;
     public $animated = true;
     public $animationtics = 0;
@@ -116,7 +118,7 @@ class MovementOrder{
     public $forced = false;
     
     
-    function __construct($id, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $pre, $turn, $value){
+    function __construct($id, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $pre, $turn, $value, $at_initiative){
         $this->id = (int)$id;
         $this->x = (int)$x;
         $this->y = (int)$y;
@@ -129,7 +131,7 @@ class MovementOrder{
         $this->xOffset = $xOffset;
         $this->yOffset = $yOffset;
         $this->value = $value;
-        
+        $this->at_initiative = $at_initiative;
 
     }
     

@@ -56,22 +56,38 @@
 		
 		
 
-		public function getDamage($fireOrder){
-		
-			if ($this->turnsloaded+1 == 1){
-				//print("Plasma: turnsloaded 1 \n");
-				return Dice::d(10)+4;   
-			}else if ($this->turnsloaded+1 == 2){
-				//print("Plasma: turnsloaded 2 \n");
-				return Dice::d(10, 2)+8;
-			}else{
-				//print("Plasma: turnsloaded 3 real: ".$this->turnsloaded." \n");
-				return Dice::d(10,3)+17;
-			}
-			
-		}
+	public function getDamage($fireOrder){
+            switch($this->turnsloaded){
+                case 0:
+                case 1:
+                    return Dice::d(10)+4;
+                case 2:
+                    return Dice::d(10, 2)+8;
+                case 3:
+                default:
+                    return Dice::d(10,3)+17;
+            }
+	}
+        
         public function setMinDamage(){
-			if ($this->turnsloaded == 1){
+            switch($this->turnsloaded){
+                case 0:
+                case 1:
+                    $this->minDamage = 5 - $this->dp;
+                    $this->animationExplosionScale = 0.15;
+                    break;
+                case 2:
+                    $this->animationExplosionScale = 0.25;
+                    $this->minDamage = 10 - $this->dp;  
+                    break;
+                case 3:
+                default:
+                    $this->animationExplosionScale = 0.35;
+                    $this->minDamage = 20 - $this->dp;  
+                    break;
+            }
+
+/*            if ($this->turnsloaded == 1){
 				$this->minDamage = 5 - $this->dp;
 				$this->animationExplosionScale = 0.15;
 			}else if ($this->turnsloaded == 2){
@@ -82,10 +98,24 @@
 				$this->minDamage = 20 - $this->dp;  
 			}else{
 				$this->minDamage = 5 - $this->dp;   
-			}
+			}*/
 		}
+                
         public function setMaxDamage(){
-			if ($this->turnsloaded == 1)
+            switch($this->turnsloaded){
+                case 0:
+                case 1:
+                    $this->maxDamage = 14 - $this->dp;
+                    break;
+                case 2:
+                    $this->maxDamage = 28 - $this->dp;  
+                    break;
+                case 3:
+                default:
+                    $this->maxDamage = 47 - $this->dp;  
+                    break;
+            }
+/*			if ($this->turnsloaded == 1)
 				$this->maxDamage = 14 - $this->dp ;  
 			else if ($this->turnsloaded == 2)
 				$this->maxDamage = 28 - $this->dp; 
@@ -93,7 +123,7 @@
 				$this->maxDamage = 47 - $this->dp; 		    
 			else
 				$this->maxDamage = 47 - $this->dp;
-		}
+*/		}
 
 	}
 	
@@ -216,5 +246,53 @@
         public function setMaxDamage(){     $this->maxDamage = 22 - $this->dp;      }
 
 	}
+
+
+    class PlasmaTorch extends Plasma{
+
+	public $name = "plasmaTorch";
+        public $displayName = "Plasma Torch";
+        public $animation = "trail";
+        public $animationColor = array(75, 250, 90);
+	public $trailColor = array(75, 250, 90);
+	public $projectilespeed = 15;
+        public $animationWidth = 5;
+	public $animationExplosionScale = 0.4;
+	public $trailLength = 10;
+	public $rangeDamagePenalty = 1;
+		        
+        public $loadingtime = 1;
+			
+        public $rangePenalty = 1;
+        public $fireControl = array(null, 0, 2); // fighters, <=mediums, <=capitals 
+
+
+	function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
+            parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
+        }
+		
+		
+	public function getDamage($fireOrder){        return Dice::d(10,2)+10;   }
+        public function setMinDamage(){     $this->minDamage = 12 - $this->dp;      }
+        public function setMaxDamage(){     $this->maxDamage = 30 - $this->dp;      }
+
+        public function fire($gamedata, $fireOrder){
+            // If fired, a Plasma Torch might overheat and go in shutdown for 2 turns.
+            // Make a crit roll taking into account any damage already sustained.
+            $roll = Dice::d(20) + $this->getTotalDamage();
+            
+            if($roll >= 16){
+                // It has overheated.
+                $crit = new ForcedOfflineOneTurn(-1, $fireOrder->shooterid, $this->id, "ForcedOfflineOneTurn", $gamedata->turn);
+                $crit->updated = true;
+                $this->criticals[] =  $crit;
+                $crit = new ForcedOfflineOneTurn(-1, $fireOrder->shooterid, $this->id, "ForcedOfflineOneTurn", $gamedata->turn+1);
+                $crit->updated = true;
+                $this->criticals[] =  $crit;
+            }
+            
+            parent::fire($gamedata, $fireOrder);
+        }
+    }
 
 ?>

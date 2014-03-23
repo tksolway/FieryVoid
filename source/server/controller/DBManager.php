@@ -128,6 +128,7 @@ class DBManager {
             Debug::log($sql);
 			$id = $this->insert($sql);
 			
+                        return $id;
 			//$sql = "INSERT INTO `B5CGM`.`tac_iniative` VALUES($gameid, $id, 0, 0)";
             //$this->insert($sql);			
 			
@@ -136,7 +137,18 @@ class DBManager {
             throw $e;
         }
 	}
-    
+
+	public function submitAmmo($shipid, $systemid, $gameid, $firingMode, $ammoAmount){
+	
+            try{
+                $sql = "INSERT INTO `B5CGM`.`tac_ammo` VALUES($shipid, $systemid, $firingMode, $gameid, $ammoAmount)";
+                $id = $this->insert($sql);
+            }catch(Exception $e) {
+                $this->endTransaction(true);
+                throw $e;
+            }
+	}
+        
     public function deleteEmptyGames()
     {
         $ids = array();
@@ -659,7 +671,7 @@ class DBManager {
                     tac_shipmovement
                 VALUES 
                 ( 
-                    null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                    null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
                 )"
             );
             
@@ -672,7 +684,7 @@ class DBManager {
                     $assThrust = $move->getAssThrustJSON();
                     
                     $stmt->bind_param(
-                        'iisiiiiiiiissii',
+                        'iisiiiiiiiissiii',
                         $shipid,
                         $gameid,
                         $move->type,
@@ -687,7 +699,8 @@ class DBManager {
                         $reqThrust,
                         $assThrust,
                         $move->turn,
-                        $move->value
+                        $move->value,
+                        $move->at_initiative
                     );
                     $stmt->execute();
                 }
@@ -712,7 +725,7 @@ class DBManager {
                 if ($acceptPreturn == false && $preturn)
                     continue;
                 
-                $sql = "Insert into `B5CGM`.`tac_shipmovement` values (null, $shipid, $gameid, '".$movement->type."', ".$movement->x.", ".$movement->y.", ".$movement->xOffset.", ".$movement->yOffset.", ".$movement->speed.", ".$movement->heading.", ".$movement->facing.", $preturn, '".$movement->getReqThrustJSON()."', '".$movement->getAssThrustJSON()."', $turn, '".$movement->value."')";
+                $sql = "Insert into `B5CGM`.`tac_shipmovement` values (null, $shipid, $gameid, '".$movement->type."', ".$movement->x.", ".$movement->y.", ".$movement->xOffset.", ".$movement->yOffset.", ".$movement->speed.", ".$movement->heading.", ".$movement->facing.", $preturn, '".$movement->getReqThrustJSON()."', '".$movement->getAssThrustJSON()."', $turn, '".$movement->value."', '".$movement->at_initiative ."')";
                 
                 //throw new exception("sql: ".$movement->preturn . var_dump($movement));
                 $this->insert($sql);
@@ -980,7 +993,7 @@ class DBManager {
         
         $stmt = $this->connection->prepare("
             SELECT 
-                id, shipid, type, x, y, xOffset, yOffset, speed, heading, facing, preturn, turn, value, requiredthrust, assignedthrust
+                id, shipid, type, x, y, xOffset, yOffset, speed, heading, facing, preturn, turn, value, requiredthrust, assignedthrust, at_initiative
             FROM 
                 tac_shipmovement as s1
             WHERE
@@ -1011,11 +1024,11 @@ class DBManager {
         {
             $fetchturn = $gamedata->turn-1;
             $stmt->bind_param('iii', $gamedata->id, $fetchturn, $gamedata->id);
-            $stmt->bind_result($id, $shipid, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $preturn, $turn, $value, $requiredthrust, $assignedthrust);
+            $stmt->bind_result($id, $shipid, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $preturn, $turn, $value, $requiredthrust, $assignedthrust, $at_initiative);
             $stmt->execute();
             while ($stmt->fetch())
             {
-                $move = new MovementOrder($id, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $preturn, $turn, $value);
+                $move = new MovementOrder($id, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $preturn, $turn, $value, $at_initiative);
                 $move->setReqThrustJSON($requiredthrust);
                 $move->setAssThrustJSON($assignedthrust);
 
@@ -1183,6 +1196,60 @@ class DBManager {
                 );
             }
             $stmt->close();
+        }
+        
+        // Get ammo info
+        $stmt = $this->connection->prepare(
+            "SELECT 
+                shipid, systemid, firingmode, ammo
+            FROM 
+                tac_ammo
+            WHERE 
+                gameid = ?"
+        );
+
+        if ($stmt)
+        {
+            $stmt->bind_param('i', $gamedata->id);
+            $stmt->execute();
+            $stmt->bind_result(
+                $shipid,
+                $systemid,
+                $firingmode,
+                $ammo
+            );
+
+            while( $stmt->fetch())
+            {
+                // This is a dual/duoweapon or a fightersystem
+                $gamedata->getShipById($shipid)->getSystemById($systemid)->setAmmo($firingmode, $ammo);
+            }
+            $stmt->close();
+        }
+    }
+    
+    public function updateAmmoInfo($shipid, $systemid, $gameid, $firingmode, $ammoAmount){
+        try {
+            if ($stmt = $this->connection->prepare(
+                    "UPDATE 
+                        tac_ammo 
+                     SET
+                        ammo = ?
+                     WHERE 
+                        shipid = ?
+                        AND systemid = ?
+                        AND firingmode = ?
+                        AND gameid = ?
+                     "
+            ))
+            {
+                $stmt->bind_param('iiisi', $ammoAmount, $shipid, $systemid, $firingmode, $gameid);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+        catch(Exception $e) {
+            throw $e;
         }
     }
     
@@ -1658,7 +1725,14 @@ class DBManager {
                     gameid = ?"
             );
             $this->executeGameDeleteStatement($stmt, $ids);
-			
+
+            $stmt = $this->connection->prepare(
+                "DELETE FROM 
+                    tac_ammo
+                WHERE
+                    gameid = ?"
+            );
+			$this->executeGameDeleteStatement($stmt, $ids);
         }
         catch(Exception $e) {
             throw $e;

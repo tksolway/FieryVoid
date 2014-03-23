@@ -117,7 +117,7 @@ shipManager.systems = {
                 }
             }
             
-            if(system.duoWeapon){
+            if(system.duoWeapon || system.dualWeapon){
                 for(var i in system.weapons){
                     var weapon = system.weapons[i];
                     
@@ -146,7 +146,11 @@ shipManager.systems = {
     
     initializeSystem: function(system){
         
-        if (system.dualWeapon && !system.initialized){
+        if(system.dualWeapon && system.weapons == null){
+            return system;
+        }
+        
+        if (system.dualWeapon){
             var selectedWeapon = system.weapons[system.firingMode];
             
             if(selectedWeapon.duoWeapon){
@@ -156,22 +160,9 @@ shipManager.systems = {
                 selectedWeapon.damage = system.damage;
             }
             
-/* plopje           if(selectedWeapon.duoWeapon){
-                selectedWeapon.firingMode = system.firingMode;
-                selectedWeapon.firingModes = system.firingModes;
-                selectedWeapon.power = system.power;
-                selectedWeapon.dualWeapon = true;
-                selectedWeapon.initialized = true;
-                selectedWeapon.damage = system.weapons[1].damage;
-                selectedWeapon.destroyed = system.destroyed;
-                return selectedWeapon;
-            }*/
-            
+            selectedWeapon.power = system.power;
             selectedWeapon.firingMode = system.firingMode;
             selectedWeapon.firingModes = system.firingModes;
-            selectedWeapon.power = system.power;
-            selectedWeapon.displayName = system.displayName;
-            selectedWeapon.id = system.id;
             selectedWeapon.dualWeapon = true;
             selectedWeapon.initialized = true;
             
@@ -181,6 +172,20 @@ shipManager.systems = {
         
         if(system.boostable){
             system = system.initBoostableInfo();
+        }
+        
+        // Check the number of elements in missileArray
+        // This has to be done like this, as length doesn't give the correct
+        // return because the elements in the missileArray aren't on consequetive
+        // indices.
+        var cnt = 0;
+        for(var i in system.missileArray){
+            cnt++;
+        }
+        
+        if(system.missileArray!= null && cnt > 0){
+            system.range = system.missileArray[system.firingMode].range;
+            system.damage = system.missileArray[system.firingMode].damage;
         }
 
         return system;

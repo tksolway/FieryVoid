@@ -128,8 +128,8 @@
             /* If fully boosted: test for possible crit. */
             if($this->getBoostLevel($gamedata->turn) === $this->maxBoostLevel){
                 $shooter = $gamedata->getShipById($fireOrder->shooterid);
-                $crits = $this->testCritical($shooter, $gamedata->turn, $crits);
-                $this->setCriticals($crits, $gamedata->turn);
+                $crits = $this->testCritical($shooter, $gamedata, $crits);
+//                $this->setCriticals($crits, $gamedata->turn);
             }
             
             parent::fire($gamedata, $fireOrder);
@@ -454,6 +454,20 @@ class GraviticBolt extends Gravitic
             );
 		
             parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc, $weapons);
+        }
+        
+        public function setLoading( $loading )
+        {
+            Debug::log("Enter gravlance setLoading");
+            if (!$loading){
+                Debug::log("Exit gravlance setLoading: nothing");
+                return;
+            }
+
+            foreach ($this->weapons as $i=>$weapon){
+
+                $weapon->setLoading($loading);
+            }
         }
     }
     
