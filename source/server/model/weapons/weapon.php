@@ -87,6 +87,16 @@ class Weapon extends ShipSystem{
         
     }
     
+    public function firesInPhase($phase){
+        switch($phase){
+            case 31:
+                return false;
+            case 3:
+            default:
+                return true;
+        }
+    }
+    
     public function getRange($fireOrder)
     {
         return $this->range;

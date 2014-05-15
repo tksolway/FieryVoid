@@ -30,8 +30,8 @@ class Avioki extends BaseShip{
         $this->addPrimarySystem(new JumpEngine(5, 12, 4, 28));
 	$this->addPrimarySystem(new Hangar(5, 2));
    
-        $this->addFrontSystem(new GravitonPulsar(3, 5, 2, 240, 60));
-        $this->addFrontSystem(new GravitonPulsar(3, 5, 2, 300, 120));
+        $this->addFrontSystem(new GraviticMine(3, 5, 2, 240, 60));
+        $this->addFrontSystem(new GraviticMine(3, 5, 2, 300, 120));
         $this->addFrontSystem(new GraviticThruster(5, 10, 0, 4, 1));
         $this->addFrontSystem(new GraviticThruster(5, 10, 0, 4, 1));
 

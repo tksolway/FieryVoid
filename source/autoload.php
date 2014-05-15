@@ -136,6 +136,7 @@ spl_autoload_register(
                 'graviticcannon' => '/server/model/weapons/gravitic.php',
                 'graviticcutter' => '/server/model/weapons/gravitic.php',
                 'graviticlance' => '/server/model/weapons/gravitic.php',
+                'graviticmine' => '/server/model/weapons/AoE.php',
                 'graviticshield' => '/server/model/systems/baseSystems.php',
                 'gravitonbeam' => '/server/model/weapons/gravitic.php',
                 'gravitonpulsar' => '/server/model/weapons/gravitic.php',
@@ -437,6 +438,7 @@ spl_autoload_register(
                 'warlock' => '/server/model/ships/EA/warlock.php',
                 'wartalon' => '/server/model/ships/drazi/wartalon.php',
                 'weapon' => '/server/model/weapons/weapon.php',
+                'weaponbasedmovhandler' => '/server/handlers/weaponBasedMovHandler.php',
                 'weaponloading' => '/server/model/BaseClasses.php',
                 'whitestar' => '/server/model/ships/minbari/whitestar.php'
             );

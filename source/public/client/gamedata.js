@@ -252,6 +252,8 @@ gamedata = {
             }
         }else if (gamedata.gamephase == 3){
             ajaxInterface.submitGamedata();
+        }else if (gamedata.gamephase == 31){
+            ajaxInterface.submitGamedata();
         }else if (gamedata.gamephase == 4){
             ajaxInterface.submitGamedata();
         }else if (gamedata.gamephase == -1){
@@ -290,6 +292,14 @@ gamedata = {
         }
     },
     
+    getLastPhase: function(){
+        for (var i in gamedata.slots){
+            var slot = gamedata.slots[i];
+            if (slot.playerid = gamedata.thisplayer)
+                return slot.lastphase;
+        }
+    },
+    
     getPlayerNameById: function(id){
         for(var i in gamedata.slots){
             var slot = gamedata.slots[i];
@@ -309,6 +319,9 @@ gamedata = {
         if (gamedata.gamephase == 3)
             return "FIRE ORDERS";
             
+        if (gamedata.gamephase == 31)
+            return "WEAPON BASED MOVEMENT";
+
         if (gamedata.gamephase == 4)
             return "FINAL ORDERS";
         
@@ -408,12 +421,53 @@ gamedata = {
             }
         }
         
+        if(gamedata.gamephase == 31){
+            if(gamedata.waiting == false){
+                UI.shipMovement.hide();
+                ew.RemoveEWEffects();
+                animation.setAnimating(animation.animateShipMoves, function(){
+                    infowindow.informPhase(5000, null);
+                   
+                    if (gamedata.waiting == false){
+                        for (var i in gamedata.ships){
+                            var ship = gamedata.ships[i];
+                            if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
+                                gamedata.selectShip(ship, false);
+                                scrolling.scrollToShip(ship);
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
         if (gamedata.gamephase == 3 && gamedata.waiting == false){
             UI.shipMovement.hide();
             ew.RemoveEWEffects();
-            animation.setAnimating(animation.animateShipMoves, function(){
+            
+            // check if previous turn wasn't a WeaponBasedMovementTurn
+            // If so, don't animate the ships, just the WeaponBasedMovements
+            if(gamedata.getLastPhase() != 31){
+                animation.setAnimating(animation.animateShipMoves, function(){
+                    infowindow.informPhase(5000, null);
+
+                    if (gamedata.waiting == false){
+                        for (var i in gamedata.ships){
+                            var ship = gamedata.ships[i];
+                            if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
+                                gamedata.selectShip(ship, false);
+                                scrolling.scrollToShip(ship);
+                                break;
+                            }
+                        }
+                    }
+                });
+            }else{
                 infowindow.informPhase(5000, null);
-                                
+                gamedata.animating = true;
+                animation.cancelAnimation();
+
                 if (gamedata.waiting == false){
                     for (var i in gamedata.ships){
                         var ship = gamedata.ships[i];
@@ -424,20 +478,16 @@ gamedata = {
                         }
                     }
                 }
-                
-        
-            });
-
-            
+            }
         }
+
         ballistics.initBallistics();
-       
         
         if (gamedata.waiting){
             ajaxInterface.startPollingGamedata();
         }
     },
-            
+          
     checkGameStatus: function(){
         $("#phaseheader .turn.value").html("TURN: " + gamedata.turn+ ",");
         $("#phaseheader .phase.value").html(gamedata.getPhasename());
@@ -460,7 +510,7 @@ gamedata = {
             }
         }
         
-        if (gamedata.gamephase == 4){
+        if (gamedata.gamephase == 4 || gamedata.gamephase == 31){
             
             commit.show();
             cancel.hide();

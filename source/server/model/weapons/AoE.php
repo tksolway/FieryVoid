@@ -156,5 +156,80 @@
     }
 
 
+    class GraviticMine extends AoE{
+        public $name = "graviticMine";
+        public $displayName = "Gravitic mine";
+        public $range = 40;
+        public $loadingtime = 2;
+        public $ballistic = true;
+        public $hextarget = true;
+        public $hidetarget = true;
+        public $flashDamage = true;
 
+        public $trailColor = array(141, 240, 255);
+        public $animation = "ball";
+        public $animationColor = array(141, 240, 255);
+        public $animationExplosionScale = 5;
+        public $animationExplosionType = "AoE";
+        public $explosionColor = array(141, 240, 255);
+        public $projectilespeed = 12;
+        public $animationWidth = 10;
+        public $trailLength = 10;
+        
+        function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
+            parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
+        }
+        
+        public function calculateHit($gamedata, $fireOrder){
+            // GravMines don't deviate nor do they dissipate. 
+            $fireOrder->shotshit++;
+            
+            if(TacGamedata::$currentPhase == 3){
+                // Only in the firing phase, is the mine completely handled.
+                $fireOrder->rolled = 1;
+                $fireOrder->updated = true; 
+            }
+        }
+
+        public function fire($gamedata, $fireOrder){
+            $shooter = $gamedata->getShipById($fireOrder->shooterid);
+            $shooterpos = $shooter->getCoPos();
+            $target = array("x"=>$fireOrder->x, "y"=>$fireOrder->y);
+            
+            $this->calculateHit($gamedata, $fireOrder);
+            $pos = mathlib::hexCoToPixel($fireOrder->x, $fireOrder->y);
+            $ships1 = $gamedata->getShipsInDistance($pos, 5);
+            $shipsAt0 = $gamedata->getShipsInDistance($pos);
+
+            foreach($ships1 as $ship){
+                $this->AOEdamage($ship, $shooter, $fireOrder, $shooterpos, 0, $gamedata);
+                $fireOrder->notes .= $ship->name ." in same hex. "; 
+            }
+
+
+            $ships2 = $gamedata->getShipsInDistance($pos, mathlib::$hexWidth+1);
+
+            foreach($ships2 as $ship){
+                if (isset($ships1[$ship->id]))
+                    continue;
+
+                $fireOrder->notes .= $ship->name ." in adjacent hex. "; 
+                $this->AOEdamage($ship, $shooter, $fireOrder, $pos, 0, $gamedata);
+             }
+        }
+        
+        public function firesInPhase($phase) {
+            switch($phase){
+                case 3:
+                case 31:
+                    return true;
+                default:
+                    return true;
+            }
+        }
+        
+        public function getDamage($fireOrder){        return 0;   }
+        public function setMinDamage(){     $this->minDamage = 0;      }
+        public function setMaxDamage(){     $this->maxDamage = 20;      }
+    }
 ?>

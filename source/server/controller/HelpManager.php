@@ -28,7 +28,8 @@ class HelpManager{
 			$message = self::$dbManager->getHelpMessage($gamehelpmessagelocation);
 		}
 		catch(Exception $e) {
-			$logid = Debug::error($e);
+			//$logid = Debug::error($e);
+                        $logid = -1;
 			return '{"error": "' .$e->getMessage() . '", "code":"'.$e->getCode().'", "logid":"'.$logid.'"}';
 		}
         return $message;

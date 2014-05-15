@@ -223,13 +223,11 @@ class FighterMissileRack extends MissileLauncher
     
     public function setId($id){
         
-        debug::log("Set ID");
         parent::setId($id);
         
         $counter = 0;
         
         foreach ($this->missileArray as $missile){
-            debug::log("Set ID missile, $counter");
             $missile->setId(1000 + ($id*10) + $counter);
             $counter++;
         } 

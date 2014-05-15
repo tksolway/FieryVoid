@@ -13,3 +13,10 @@ var EnergyMine = function(json, ship)
 EnergyMine.prototype = Object.create( Aoe.prototype );
 EnergyMine.prototype.constructor = EnergyMine;
 
+var GraviticMine = function(json, ship)
+{
+    Aoe.call( this, json, ship);
+}
+GraviticMine.prototype = Object.create( Aoe.prototype );
+GraviticMine.prototype.constructor = GraviticMine;
+

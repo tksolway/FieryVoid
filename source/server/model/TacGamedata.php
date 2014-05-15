@@ -299,8 +299,10 @@ class TacGamedata{
         
         foreach ($slots as $slot)
         {
-            if ($slot->lastturn < $this->turn || $slot->lastphase < $this->phase)
-            return false;
+            if ($slot->lastturn < $this->turn || $slot->lastphase < $this->phase
+                    || ($slot->lastphase == 31 && $this->phase == 3)){
+                return false;
+            }
         }
         
         return true;

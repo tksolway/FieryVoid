@@ -12,6 +12,7 @@ set_error_handler(
 class Manager{
 
     private static $dbManager = null;
+    private static $weaponBasedMoveHandler = null;
 
     /**
      *  @return DBManager dbManager
@@ -257,7 +258,6 @@ class Manager{
             self::initDBManager();  
             $starttime = time();
             
-            
             $ships = self::getShipsFromJSON($ships);
             
             if (sizeof($ships)==0)
@@ -266,8 +266,9 @@ class Manager{
             //$gamedata = new TacGamedata($gameid, $turn, $phase, $activeship, $userid, "", "", 0, "", 0);
             //$gamedata->ships = $ships;
             
-            if (!self::$dbManager->getPlayerSubmitLock($gameid, $userid))
+            if (!self::$dbManager->getPlayerSubmitLock($gameid, $userid)){
                 throw new Exception("Failed to get player lock");
+            }
             
             //Debug("GAME: $gameid Player: $userid starting submit of phase $phase");
             
@@ -279,14 +280,18 @@ class Manager{
                 self::$dbManager->updateGameStatus($gameid, $status);
             }
             
-            if ($gameid != $gdS->id || $turn != $gdS->turn || $phase != $gdS->phase)
+            if ($gameid != $gdS->id || $turn != $gdS->turn || $phase != $gdS->phase){
                 throw new Exception("Unexpected orders");
+            }
                 
-            if ($gdS->hasAlreadySubmitted($userid))
+            if ($gdS->hasAlreadySubmitted($userid)){
                 throw new Exception("Turn already submitted or wrong user");
+            }
                 
             if ($gdS->status == "FINISHED")
+            {
                 throw new Exception("Game is finished");
+            }
             
             //print(var_dump($ships));
             
@@ -298,6 +303,12 @@ class Manager{
                 }else{
                     throw new Exception("phase and active ship does not match");
                 }
+            }else if($gdS->phase == 31){
+                // This is the weapon based movement phase
+                Debug::log("*******************");
+                Debug::log("we are in phase 31!");
+                Debug::log("*******************");
+                $ret = self::handleWeaponBasedMovement($ships, $gdS);
             }else if ($gdS->phase == 3){
                 $ret = self::handleFiringOrders($ships, $gdS);
             }else if ($gdS->phase == 4){
@@ -309,9 +320,7 @@ class Manager{
             }
                         
             self::$dbManager->endTransaction(false);
-            
             self::$dbManager->releasePlayerSubmitLock($gameid, $userid);
-            
             //Debug("GAME: $gameid Player: $userid SUBMIT OK");
             
             $endtime = time();
@@ -386,6 +395,13 @@ class Manager{
     private static function handleFinalOrders(  $ships, $gamedata ){
         self::$dbManager->updatePlayerStatus($gamedata->id, $gamedata->forPlayer, $gamedata->phase, $gamedata->turn);
        
+        return true;
+    }
+    
+    private static function handleWeaponBasedMovement($ships, $gamedata){
+        // Now this is only to handle end of phase, as there are only 
+        self::$dbManager->updatePlayerStatus($gamedata->id, $gamedata->forPlayer, $gamedata->phase, $gamedata->turn);
+        
         return true;
     }
     
@@ -503,7 +519,10 @@ class Manager{
                 //Because movement does not have simultaenous orders, this is handled in handleMovement
             }else if ($phase == 3){
                    self::startEndPhase($gamedata);
-            }else if ($phase == 4){
+            }else if ($phase == 31){
+                self::startWeaponAllocation($gamedata);
+            }
+            else if ($phase == 4){
                 self::changeTurn($gamedata);
             }else if ($phase == -2){
                 self::startGame($gamedata);
@@ -551,6 +570,12 @@ class Manager{
         $gamedata->setActiveship($gamedata->getFirstShip()->id);
         self::$dbManager->updateGamedata($gamedata);
     
+    }
+    
+    private static function startWeaponBasedMovement($gamedata){
+        $gamedata->setPhase(31); 
+        $gamedata->setActiveship(-1);
+        self::$dbManager->updateGamedata($gamedata);
     }
     
     private static function startWeaponAllocation($gamedata){
@@ -681,8 +706,19 @@ class Manager{
             $gamedata->setActiveship($nextshipid);
             self::$dbManager->updateGamedata($gamedata);
         }else{
-            self::startWeaponAllocation($gamedata);
+            // Check if WeaponBasedMovement is needed at the start of the
+            // Firing Phase
+            if(self::$weaponBasedMoveHandler == null){
+                self::$weaponBasedMoveHandler = new WeaponBasedMovHandler($gamedata);
+            }
+
+            self::$weaponBasedMoveHandler->checkForFireOrders($ships);
             
+            if(self::$weaponBasedMoveHandler->isPhaseNeeded()){
+                self::startWeaponBasedMovement($gamedata);
+            }else{
+                self::startWeaponAllocation($gamedata);
+            }
         }
         
         

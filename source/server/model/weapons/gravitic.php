@@ -294,15 +294,12 @@ class GraviticBolt extends Gravitic
         }
 
         public function setTimes(){
-            Debug::log("*** setTimes ***");
             if(!(TacGamedata::$currentPhase == 1 || ($this->turnsloaded < $this->loadingtime ))){
                 // In any other case, check the current boost.
                 $this->loadingtime = 1 + $this->getBoostLevel(TacGamedata::$currentTurn);
                 $this->turnsloaded = 1 + $this->getBoostLevel(TacGamedata::$currentTurn);
                 $this->normalload = 1 + $this->getBoostLevel(TacGamedata::$currentTurn);
-                Debug::log("Loading Time = ".$this->loadingtime);
             }
-            Debug::log("*** END setTimes ***");
         }
         
         public function getDamage($fireOrder){        return $this->getCurDamage($fireOrder->turn);   }
@@ -517,20 +514,6 @@ class GraviticBolt extends Gravitic
 		
             parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc, $weapons);
         }
-        
-/*        public function setLoading( $loading )
-        {
-            Debug::log("Enter gravlance setLoading");
-            if (!$loading){
-                Debug::log("Exit gravlance setLoading: nothing");
-                return;
-            }
-
-            foreach ($this->weapons as $i=>$weapon){
-
-                $weapon->setLoading($loading);
-            }
-        }*/
     }
     
     // Don't use the GravLance. It's only here for the GraviticLance class!!
