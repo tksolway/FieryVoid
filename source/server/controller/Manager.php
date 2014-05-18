@@ -399,6 +399,13 @@ class Manager{
     }
     
     private static function handleWeaponBasedMovement($ships, $gamedata){
+        if(self::$weaponBasedMoveHandler == null){
+            self::$weaponBasedMoveHandler = new WeaponBasedMovHandler($gamedata);
+        }
+
+        self::$weaponBasedMoveHandler->checkForFireOrders($ships);
+        self::$weaponBasedMoveHandler->handleWeaponBasedMovement($ships, $gamedata);
+        
         // Now this is only to handle end of phase, as there are only 
         self::$dbManager->updatePlayerStatus($gamedata->id, $gamedata->forPlayer, $gamedata->phase, $gamedata->turn);
         
@@ -520,6 +527,7 @@ class Manager{
             }else if ($phase == 3){
                    self::startEndPhase($gamedata);
             }else if ($phase == 31){
+                Debug::log("Manager 1");
                 self::startWeaponAllocation($gamedata);
             }
             else if ($phase == 4){
@@ -573,6 +581,8 @@ class Manager{
     }
     
     private static function startWeaponBasedMovement($gamedata){
+                        Debug::log("Manager 2");
+
         $gamedata->setPhase(31); 
         $gamedata->setActiveship(-1);
         self::$dbManager->updateGamedata($gamedata);
@@ -714,9 +724,15 @@ class Manager{
 
             self::$weaponBasedMoveHandler->checkForFireOrders($ships);
             
+                            Debug::log("Manager 3");
+
             if(self::$weaponBasedMoveHandler->isPhaseNeeded()){
+                                Debug::log("Manager 4");
+
                 self::startWeaponBasedMovement($gamedata);
             }else{
+                                Debug::log("Manager 5");
+
                 self::startWeaponAllocation($gamedata);
             }
         }

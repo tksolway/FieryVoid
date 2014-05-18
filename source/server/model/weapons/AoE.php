@@ -191,10 +191,19 @@
             }
         }
 
+        public function getShipsInBlast($gamedata, $fireOrder){
+            $shooter = $gamedata->getShipById($fireOrder->shooterid);
+            $shooterpos = $shooter->getCoPos();
+            
+            $this->calculateHit($gamedata, $fireOrder);
+            $pos = mathlib::hexCoToPixel($fireOrder->x, $fireOrder->y);
+            
+            return $gamedata->getShipsInDistance($pos, 5);
+        }
+        
         public function fire($gamedata, $fireOrder){
             $shooter = $gamedata->getShipById($fireOrder->shooterid);
             $shooterpos = $shooter->getCoPos();
-            $target = array("x"=>$fireOrder->x, "y"=>$fireOrder->y);
             
             $this->calculateHit($gamedata, $fireOrder);
             $pos = mathlib::hexCoToPixel($fireOrder->x, $fireOrder->y);
