@@ -80,6 +80,130 @@ window.effects = {
             effects.addBigExplosion(pos, weapon);
         if (type == "AoE")
             effects.addAoEExplosion(pos, weapon);
+        if(type == "GravMine")
+            effects.addGravMineExplosion(pos, weapon);
+    },
+    
+    addGravMineExplosion: function(pos, weapon){
+        
+        var r = hexgrid.hexlenght*gamedata.zoom*weapon.animationExplosionScale*2;
+        var speed = Math.floor((2*Math.random()+10));
+        var totalTics = Math.ceil(r/speed);
+        var speedTicsIncrement = Math.floor(totalTics/11);
+        speed = speed -5;
+        var starsArray = new Array();
+
+        // Set-up of array elements:
+        // - radius of the circle on which they are positioned.
+        // - angle in degrees of position
+        // - size of star
+
+        // First divide 24 stars on regular intervals,
+        // then add some randomness to the positioning.
+        // Stars are positioned at a radius of 5 hexes,
+        // 15 degrees from each other.
+        for(var x = 0; x < 24; x++){
+            var radiusRandom = Math.floor((Math.random() * 21)) - 10;
+            var angleRandom = Math.floor((Math.random() * 9)) - 4;
+            var sizeRandom = Math.floor((Math.random() * 5))-2;
+
+            starsArray.push({radius:hexgrid.hexlenght*gamedata.zoom*weapon.animationExplosionScale*2+radiusRandom, angle:x*15+angleRandom, size:5+sizeRandom});
+        }
+        
+        var explosion = {
+        
+            tics:0,
+            totalTics:totalTics,
+            scale:weapon.animationExplosionScale,
+            weapon:weapon,
+            size:r,
+            startsize:r,
+            radius:r,
+            speed:speed,
+            dissappear:Math.floor(2*Math.random()+7),
+            green:0,
+            pos:pos,
+            stars: starsArray,
+            draw:function(self){
+                var canvas = effects.getCanvas();
+                self.startsize -= self.speed;
+                var size = self.startsize;
+                var a = getAlpha();
+                var pos = self.pos;
+                var color = weapon.explosionColor;
+                var colorChanged = calculateExplosionColor(color);
+                
+                if(self.tics % speedTicsIncrement == 0){
+                    self.speed++;
+                }
+                
+                //effects.drawGravMineCenter(canvas, pos.x+self.radius, pos.y+self.radius);
+                effects.drawGravMineCenter(canvas, pos.x, pos.y, self.tics/self.totalTics);
+               
+                canvas.strokeStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
+                //canvas.fillStyle = "rgba("+color[0]+","+(color[1]+self.green)+","+color[2]+","+0.08*a+")";
+                
+                canvas.fillStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
+                drawStars(canvas, self.stars, pos.x, pos.y);
+                
+                self.tics++;
+                
+                function getAlpha(){
+                    a = 1.0;
+                    if (self.tics > (self.totalTics - self.dissappear)){
+                        
+                        var t = self.tics - (self.totalTics - self.dissappear);
+                        a *= (1-t/self.dissappear);
+                        
+                    }
+                    
+                   return a;
+                }
+
+                function calculateExplosionColor(color){
+                    var retArray = new Array(color.length);
+                    
+                    for(var i = 0; i < color.length; i++){
+                        retArray[i] = Math.floor(color[i] - (self.tics * (color[i]/self.totalTics)));
+                    }
+                    
+                    return retArray;
+                }
+                
+                function drawStars(canvas, array, x, y){
+                    // The x and y are the centre of the circle.
+                    for(var i in array){
+                        var star = array[i];
+                        var xco = x + (star["radius"]*Math.cos(star["angle"]/180*Math.PI));
+                        var yco = y + (star["radius"]*Math.sin(star["angle"]/180*Math.PI));
+                        
+                        for(var i = 0; i < star["size"]; i++){
+                            graphics.drawCircleAndFill(canvas, xco, yco, star["size"]-i, 0);
+                        }
+                        
+                        star["radius"] -= self.speed;
+                        
+                        if(star["radius"] < 0){
+                            star["radius"] = 0;
+                        }
+                    }
+                }
+            },
+            callback:effects.doneDisplayingWeaponFire
+        
+        }
+        
+        effects.frontAnimations.push(explosion);
+    },
+
+    drawGravMineCenter: function (canvas, posX, posY, opacity){
+        var centerImg = new Image();
+        var imgSize = 200;
+        centerImg.src = "img/grav_mine_blast.png";
+        centerImg.style.opacity = 0.5;
+        
+        graphics.drawImage(canvas, posX, posY, imgSize*gamedata.zoom, imgSize*gamedata.zoom, centerImg, opacity);
+        //graphics.drawAndRotate(canvas, posX, posY, imgSize*gamedata.zoom, imgSize*gamedata.zoom, 0, centerImg, false);
     },
     
     addAoEExplosion: function(pos, weapon){
@@ -212,6 +336,114 @@ window.effects = {
     displayAllWeaponFire: function(callback){
         effects.callback = callback;
         effects.doDisplayAllWeaponFire();
+    },
+    
+//    displayAllWeaponBasedMovementFire: function(){
+//        effects.doDisplayAllWeaponBasedMovementFire();
+//    },
+    
+    displayAllWeaponBasedMovementFire: function(callback){
+        effects.callback = callback;
+        effects.doDisplayAllWeaponBasedMovementFire();
+    },
+    
+    doDisplayAllWeaponBasedMovementFire: function(){
+        var windows = $(".shipwindow:visible").hide();
+        gamedata.effectsDrawing = true;
+        
+        gamedata.gamewidth = 1600;
+        gamedata.gameheight = 1000;
+        
+        for (var i in gamedata.ships){
+            var ship = gamedata.ships[i];
+            
+            if (shipManager.isDestroyed(ship) && shipManager.getTurnDestroyed(ship) == gamedata.turn && !ship.destructionAnimated ){
+                ship.dontDraw = false;
+                ship.destructionAnimated = false;
+            }
+        
+        }
+            
+        for (var i in gamedata.ships){
+            var ship = gamedata.ships[i];
+            
+            var fires = weaponManager.getAllFireOrders(ship);
+            
+            for (var a in fires){
+                var fire = fires[a];
+                var firesToDisplay = Array();                
+                
+                if (fire.turn != gamedata.turn || fire.type=='intercept' || !fire.rolled)
+                    continue;
+                
+                if (fire.animated){
+                    
+                }else{
+                    if (fire.targetid != -1){
+                        var target = gamedata.getShip(fire.targetid);
+                        scrolling.scrollToShip(target);
+                    }else{
+                        scrolling.scrollToPos({x:fire.x, y:fire.y});
+                    }
+                
+                    fire.animated = true;
+                    
+                    firesToDisplay.push(fire);
+                    
+                    var weapon = shipManager.systems.getSystem(ship, fire.weaponid);
+                    
+                    if(!weapon.displayFireInPhase(3)){
+                        continue;
+                    }
+                    
+                    weapon = weaponManager.getFiringWeapon(weapon, fire);
+                    
+                    var otherFires = weaponManager.getAllFireOrders(ship);
+                    for (var b in otherFires){
+                        var otherFire = otherFires[b];
+                        var weapon2 = shipManager.systems.getSystem(ship, otherFire.weaponid);
+                        weapon2 = weaponManager.getFiringWeapon(weapon2, otherFire);
+                        
+                        if (otherFire.rolled && weapon2.name == weapon.name && !otherFire.animated && otherFire.turn == gamedata.turn){
+                            if ((otherFire.targetid != -1 && fire.targetid != -1 && otherFire.targetid == fire.targetid)
+                            || (fire.x !== 0 && otherFire.x == fire.x && fire.y !== 0 && otherFire.y == fire.y)){
+                                if (fire.pubnotes == otherFire.pubnotes){
+                                    otherFire.animated = true;
+                                    firesToDisplay.push(otherFire);
+                                }
+                            }
+                        }
+                        
+                    }
+                    
+                    combatLog.logFireOrders(firesToDisplay);
+                    effects.displayWeaponFire(firesToDisplay, effects.doDisplayAllWeaponBasedMovementFire);
+                    //infowindow.informFire(4000, fire, function(){effects.displayWeaponFire(fire);},effects.doDisplayAllWeaponFire);
+                    
+                    
+                    
+                    return;
+                }
+            }
+            
+            
+        }
+        
+        for (var i in gamedata.ships){
+            ship = gamedata.ships[i];
+            
+            if (shipManager.isDestroyed(ship) && shipManager.getTurnDestroyed(ship) == gamedata.turn && ship.destructionAnimated == false){
+                scrolling.scrollToShip(ship);
+                effects.displayShipDestroyed(ship, effects.doDisplayAllWeaponBasedMovementFire);
+                return;
+            }
+        
+        }
+        
+        gamedata.effectsDrawing = false;
+        windows.show();
+        animation.endAnimation();
+//        effects.callback();
     },
     
     doDisplayAllWeaponFire: function(){

@@ -90,6 +90,14 @@ Weapon.prototype.getInterceptRating = function()
     return this.intercept;
 }
 
+Weapon.prototype.displayFireInPhase = function(phase){
+    if(phase == 3){
+        return false;
+    }else{
+        return true;
+    }
+}
+
 
 var Ballistic = function(json, ship)
 {

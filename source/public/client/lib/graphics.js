@@ -221,6 +221,16 @@ window.graphics = {
         canvas.translate(-x, -y);               
         canvas.restore();
     
+    },
+    
+    drawImage: function(canvas, x, y, iw, ih, img, opacity){
+        var width = iw/2;
+        var heigth = ih/2;
+        
+        canvas.save();
+        canvas.globalAlpha = opacity;
+        canvas.drawImage(img, x-width, y-heigth, iw, ih);
+        canvas.restore();
     }
 
 }

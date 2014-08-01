@@ -170,8 +170,9 @@
         public $animation = "ball";
         public $animationColor = array(141, 240, 255);
         public $animationExplosionScale = 5;
-        public $animationExplosionType = "AoE";
-        public $explosionColor = array(141, 240, 255);
+        public $animationExplosionType = "GravMine";
+        public $explosionColor = array(99, 255, 00);
+//        public $explosionColor = array(40, 70, 20);
         public $projectilespeed = 12;
         public $animationWidth = 10;
         public $trailLength = 10;
@@ -192,13 +193,11 @@
         }
 
         public function getShipsInBlast($gamedata, $fireOrder){
-            $shooter = $gamedata->getShipById($fireOrder->shooterid);
-            $shooterpos = $shooter->getCoPos();
-            
-            $this->calculateHit($gamedata, $fireOrder);
             $pos = mathlib::hexCoToPixel($fireOrder->x, $fireOrder->y);
             
-            return $gamedata->getShipsInDistance($pos, 5);
+            $this->calculateHit($gamedata, $fireOrder);
+            
+            return $gamedata->getShipsInDistance($pos, mathlib::$hexWidth*5+1);
         }
         
         public function fire($gamedata, $fireOrder){

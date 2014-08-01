@@ -442,6 +442,9 @@ gamedata = {
             }
         }
         
+        // To be done before phase 3, so that GravMines can be calculated.
+        ballistics.initBallistics();
+        
         if (gamedata.gamephase == 3 && gamedata.waiting == false){
             UI.shipMovement.hide();
             ew.RemoveEWEffects();
@@ -449,9 +452,48 @@ gamedata = {
             // check if previous turn wasn't a WeaponBasedMovementTurn
             // If so, don't animate the ships, just the WeaponBasedMovements
             if(gamedata.getLastPhase() != 31){
-                animation.setAnimating(animation.animateShipMoves, function(){
-                    infowindow.informPhase(5000, null);
+                animation.setAnimating(animation.animateShipMoves,
+                    function(){
+                        infowindow.informPhase(5000, null);
 
+//                        animation.setAnimating(effects.displayAllWeaponBasedMovementFire, function(){
+//                            if (gamedata.waiting == false){
+//                                for (var i in gamedata.ships){
+//                                    var ship = gamedata.ships[i];
+//                                    if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
+//                                        gamedata.selectShip(ship, false);
+//                                        scrolling.scrollToShip(ship);
+//                                        break;
+//                                    }
+//                                }
+//                            }
+//                            
+//                         //   animation.endAnimation();
+//                        });
+//                    });
+                    effects.displayAllWeaponBasedMovementFire(function(){
+                        if (gamedata.waiting == false){
+                            for (var i in gamedata.ships){
+                                var ship = gamedata.ships[i];
+                                if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
+                                    gamedata.selectShip(ship, false);
+                                    scrolling.scrollToShip(ship);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        //animation.endAnimation();
+                    });
+                });
+            }else{
+                infowindow.informPhase(5000, null);
+                gamedata.animating = true;
+                animation.cancelAnimation();
+
+                effects.displayAllWeaponBasedMovementFire(function(){
+                    console.log("displayAllWeaponBasedMovementFire callback");
+                    
                     if (gamedata.waiting == false){
                         for (var i in gamedata.ships){
                             var ship = gamedata.ships[i];
@@ -463,25 +505,10 @@ gamedata = {
                         }
                     }
                 });
-            }else{
-                infowindow.informPhase(5000, null);
-                gamedata.animating = true;
-                animation.cancelAnimation();
-
-                if (gamedata.waiting == false){
-                    for (var i in gamedata.ships){
-                        var ship = gamedata.ships[i];
-                        if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
-                            gamedata.selectShip(ship, false);
-                            scrolling.scrollToShip(ship);
-                            break;
-                        }
-                    }
-                }
             }
         }
 
-        ballistics.initBallistics();
+//        ballistics.initBallistics();
         
         if (gamedata.waiting){
             ajaxInterface.startPollingGamedata();

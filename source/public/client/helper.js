@@ -95,8 +95,13 @@ successGet:function (data)
 		document.getElementById('globalhelp').style.display='none';
 		document.getElementById('helphideimg').setAttribute("src","img/vir2.jpg");
 	} else {
-		document.getElementById('globalhelp').style.display='block';
-		document.getElementById('helphideimg').setAttribute("src","img/greyvir.jpg");
+            document.getElementById('globalhelp').style.display='block';
+            
+            var helphide = document.getElementById('helphideimg');
+            
+            if(helphide != null){
+                helphide.setAttribute("src","img/greyvir.jpg");
+            }
 	}
 },
 

@@ -9,48 +9,69 @@ class WeaponBasedMovHandler{
     private $fireOrders = array();
     
     function __construct($gamedata){
-        
     }
         
     public function checkForFireOrders($ships){
+        $this->fireOrders = array();
+        
         foreach($ships as $ship){
             $fireOrders = $ship->getAllFireOrders();
 
-            foreach ($fireOrders as $fireOrder){
-                if($ship->getSystemById($fireOrder->weaponid)->firesInPhase(31)){
+            foreach ($fireOrders as $i=>$fireOrder){
+                $weapon = $ship->getSystemById($fireOrder->weaponid);
+                if($weapon->firesInPhase(31)){
+                    Debug::log("UPDATING FIRE ORDER");
+                    if($weapon instanceof GraviticMine){
+                        Debug::log("UPDATING FIRE ORDER id: ".$fireOrders[$i]->id);
+                        $fireOrders[$i]->shotshit++;
+                        $fireOrders[$i]->rolled = 1;
+                        $fireOrders[$i]->updated = true; 
+                    }
+         
                     $this->addFireOrder($fireOrder);
                 }
             }
         }
-    }
+}
     
     private function addFireOrder($fireOrder){
         $this->fireOrders[] = $fireOrder;
     }
     
     public function isPhaseNeeded(){
-        return (sizeof($this->fireOrders) > 0);
+        // At the moment, the phase isn't needed. No other weapons than
+        // the mines are currently in.
+        // return (sizeof($this->fireOrders) > 0);
+        return false;
     }
     
     public function handleWeaponBasedMovement($ships, $tacGameData){
-        $mineOrders = array();
-        
-        foreach($this->fireOrders as $fireOrder){
-            $shooter = $tacGameData->getShipById($fireOrder->shooterid);
-            if($shooter->getSystemById($fireOrder->weaponid) instanceof GraviticMine){
-                $mineOrders[] = $fireOrder;
-            }
-        }
-        
-        if((sizeof($mineOrders) > 0)){
-            $mineHandler = new GravMineHandler($mineOrders);
-            $mineHandler->doGravMineMoves($tacGameData);
-        }
+        switch($tacGameData->phase){
+            case 2:
+                // Check for fire orders should already have been done.
+                //$this->checkForFireOrders($ships);
+                $mineOrders = array();
 
-        // Set phase to firing phase
-        $tacGameData->setPhase(3); 
-        $tacGameData->setActiveship(-1);
-        self::$dbManager->updateGamedata($tacGameData);
+                foreach($this->fireOrders as $fireOrder){
+                    $shooter = $tacGameData->getShipById($fireOrder->shooterid);
+                    if($shooter->getSystemById($fireOrder->weaponid) instanceof GraviticMine){
+                        $mineOrders[] = $fireOrder;
+                    }
+                }
+
+                if((sizeof($mineOrders) > 0)){
+                    $mineHandler = new GravMineHandler($mineOrders);
+                    $mineHandler->doGravMineMoves($tacGameData);
+                }
+                break;
+            
+            case 31:
+                break;
+            
+            default:
+                Debug::log("*** WEIRD PHASE IN handleWeaponBasedMovement ***");
+                break;
+        }
     }
 }
 
@@ -72,32 +93,26 @@ class GravMineHandler{
             // Check the ships in the blast of each GravMine
             $shipsInBlast = $gravMine->getShipsInBlast($gamedata, $gravMineFireOrder);
             
-            // GetShipsInBlast does not return anything!!!
-            
-            
             foreach($shipsInBlast as $ship){
                 // For each ship ID, add the FireOrder that that ship is caught
                 // in to the array at the index of the ship id.
-Debug::log("DGMM: 9");
                 if(isset($affectedShips[$ship->id])){
                     // the ship id is already in the array. Add the fireOrder
                     // to the array.
-Debug::log("DGMM: 10");
                     $affectedShips[$ship->id][] = $gravMineFireOrder;
                 }else{
                     // The ship id is not yet in the array. Make a new fireOrder
                     // array.
-Debug::log("DGMM: 11");
                     $fireOrders = array();
                     $fireOrders[] = $gravMineFireOrder;
                     $affectedShips[$ship->id] = $fireOrders;
                 }
             }
         }
-Debug::log("DGMM: 12");
         
         if(sizeof($affectedShips) == 0){
             // There were no ships caught in any mines
+            Debug::log("NO SHIPS ARE CAUGHT IN GRAV MINES");
             return null;
         }
         
@@ -105,39 +120,135 @@ Debug::log("DGMM: 12");
         // Now it is time to filter out the ones that are caught in a triangle
         // of mines, or those that are exactly between two mines
         foreach($affectedShips as $shipId=>$mineOrderArray){
+            $ship = $gamedata->getShipById($shipId);
+             
             if(sizeof($mineOrderArray) == 1){
                 // Only caught in one blast. This one is staying in the array
-                Debug::log("SHIP IS CAUGHT IN 1 MINES");
+                Debug::log("SHIP IS CAUGHT IN 1 GRAV MINE");
+                $this->moveShipToMine($ship, $mineOrderArray);
                 continue;
             }else if(sizeof($mineOrderArray) == 2){
                 // Caught by 2 blasts. Check if the ship might be directly
                 // in between them
-                $ship = $gamedata->getShipById($shipId);
-                Debug::log("SHIP IS CAUGHT IN 2 MINES");
+                Debug::log("SHIP IS CAUGHT IN 2 GRAV MINES");
+                
+                if($this->isHexagonCrossed($ship, $mineOrderArray[0], $mineOrderArray[1])){
+                    // The ship doesn't move but gets damage. It's caught in the middle
+                    Debug::log("SHIP IS BETWEEN 2 GRAV MINES");
+                }else{
+                    // the ship moves.
+                    Debug::log("SHIP IS MOVING TOWARDS 1 OF 2 GRAV MINES");
+                    $this->moveShipToMine($ship, $mineOrderArray);
+                }
             }else{
-                $ship = $gamedata->getShipById($shipId);
                 $shipCo = $ship->getCoPos();
-                $shipPosition = new Point($shipCo["x"], $shipCo["y"]);
                 $pointsArray = array();
                 // Caught by 3 or more blasts.
                 foreach($mineOrderArray as $mineFireOrder){
-                    $pointsArray = new Point($mineFireOrder->x, $mineFireOrder->y);
-                    
-                    $convexHull = new ConvexHull($pointsArray);
-                    $surroundingPoints = $convexHull->getHullPoints();
-                    
-                    if($this->checkForPointInBlastArea($shipPosition, $surroundingPoints)){
+                    $mineOrderArrayPixel = Mathlib::hexCoToPixel($mineFireOrder->x, $mineFireOrder->y);
+                    $pointsArray[] = new Point($mineOrderArrayPixel["x"], $mineOrderArrayPixel["y"]);
+                }
+
+                $convexHull = new ConvexHull($pointsArray);
+                $surroundingPoints = $convexHull->getHullPoints();
+
+                $hexCorners = $this->getHexagonCornersPixel($shipCo["x"], $shipCo["y"]);
+                
+                foreach($hexCorners as $hexCorner){
+                    if($this->checkForPointInBlastArea($hexCorner, $surroundingPoints)){
                         // Ship is in mine area
-                        Debug::log("SHIP IS CAUGHT IN MINES");
-                    }else{
-                        // Ship is outside mine area
-                        Debug::log("SHIP IS OUTSIDE MINES");
+                        Debug::log("SHIP IS CAUGHT IN 3+ GRAV MINES");
+                        continue;
                     }
                 }
             }
         }
+    }
+    
+    // Moves a ship towards the closest mine
+    private function moveShipToMine($ship, $mineOrderArray){
+        Debug::log("************ moveShipToMine ****************");
+
+        $mineCo = Mathlib::hexCoToPixel($mineOrderArray[0]->x, $mineOrderArray[0]->y);
+        $shipCo = $ship->getCoPos();
+        $distance = Mathlib::getDistanceHex($mineCo, $shipCo);
         
-        return $affectedShips;
+        // First find the closest mine
+        foreach($mineOrderArray as $mineOrder){
+            $curMineCo = Mathlib::hexCoToPixel($mineOrder->x, $mineOrder->y);
+            
+            if(Mathlib::getDistanceHex($curMineCo, $shipCo) < $distance){
+                $mineCo = $curMineCo;
+                $distance = Mathlib::getDistanceHex($mineCo, $shipCo);
+            }
+        }
+        
+        // Check in what direction the ship should move.
+        // Check angle, and depending on that, make a movement order
+        $heading = Mathlib::getCompassHeadingOfPoint($shipCo, $mineCo);
+        
+        Debug::log("****************  Heading : ".$heading." *********************");
+    }
+    
+    // Checks if a given hexagon is crossed by a line
+    private function isHexagonCrossed($affectedShip, $mine1, $mine2){
+        Debug::log("isHexagonCrossed 1");
+
+        $shipCo = $affectedShip->getCoPos();
+        Debug::log("isHexagonCrossed 2");
+        $hexCorners = $this->getHexagonCornersPixel($shipCo["x"], $shipCo["y"]);
+        Debug::log("isHexagonCrossed 3");
+        
+        $mine1Co = Mathlib::hexCoToPixel($mine1->x, $mine1->y);
+        $mine1CoPoint = new Point($mine1Co["x"], $mine1Co["y"]);
+        $mine2Co = Mathlib::hexCoToPixel($mine2->x, $mine2->y);
+        $mine2CoPoint = new Point($mine2Co["x"], $mine2Co["y"]);
+
+        // Create the two points of the mines
+        Debug::log("isHexagonCrossed 4");
+        
+        // Check if the line between the mines crosses any of the sides of the hex
+        Debug::log("Ship position: x: ".$shipCo["x"]." y: ".$shipCo["y"]);
+        foreach($hexCorners as $i=>$hexCorner){
+             Debug::log("Hex corner ".$i." : x: ".$hexCorner->x." y: ".$hexCorner->y);
+        }
+       
+        Debug::log("mine1Point: x: ".$mine1CoPoint->x." y: ".$mine1CoPoint->y);
+        Debug::log("mine2Point: x: ".$mine2CoPoint->x." y: ".$mine2CoPoint->y);
+        if($this->checkLineIntersection($hexCorners[0], $hexCorners[1], $mine1CoPoint, $mine2CoPoint)
+           || $this->checkLineIntersection($hexCorners[1], $hexCorners[2], $mine1CoPoint, $mine2CoPoint)
+           || $this->checkLineIntersection($hexCorners[2], $hexCorners[3], $mine1CoPoint, $mine2CoPoint)
+           || $this->checkLineIntersection($hexCorners[3], $hexCorners[4], $mine1CoPoint, $mine2CoPoint)
+           || $this->checkLineIntersection($hexCorners[4], $hexCorners[5], $mine1CoPoint, $mine2CoPoint)
+           || $this->checkLineIntersection($hexCorners[5], $hexCorners[0], $mine1CoPoint, $mine2CoPoint)
+                ){
+        Debug::log("isHexagonCrossed 5");
+            return true;
+        }
+        
+        Debug::log("isHexagonCrossed 6");
+        return false;
+    }
+    
+    // Takes the centre of a hex in pixel coordinates and returns
+    // an array with the pixel coordinate points of the corners of that hex
+    private function getHexagonCornersPixel($px, $py){
+        $corners = array();
+        
+        $hexHeight = 50; // Half the height of a hex
+        $cos30 = cos(M_PI/12);
+        $sin30 = sin(M_PI/12);
+        
+        // starting at point straight up from center. (at 90 degrees)
+        // Going clockwise.
+        $corners[] = new Point($px, $py+$hexHeight );
+        $corners[] = new Point($px + $hexHeight*$cos30, $py + $hexHeight*$sin30);
+        $corners[] = new Point($px + $hexHeight*$cos30, $py - $hexHeight*$sin30);
+        $corners[] = new Point($px, $py-$hexHeight );
+        $corners[] = new Point($px - $hexHeight*$cos30, $py - $hexHeight*$sin30);
+        $corners[] = new Point($px - $hexHeight*$cos30, $py + $hexHeight*$sin30);
+        
+        return $corners;
     }
 
     private function checkForPointInBlastArea($point, $corners){
@@ -179,7 +290,68 @@ Debug::log("DGMM: 12");
         } else {
             return false;
         }
-    }            
+    }
+    
+    private function checkLineIntersection($p1, $p2, $p3, $p4){
+        // calculates intersection and checks for parallel lines.  
+        // also checks that the intersection point is actually on  
+        // the line segment p1-p2  
+
+        // calculate differences  
+        $xD1=$p2->x-$p1->x;  
+        $xD2=$p4->x-$p3->x;  
+        $yD1=$p2->y-$p1->y;  
+        $yD2=$p4->y-$p3->y;  
+        $xD3=$p1->x-$p3->x;  
+        $yD3=$p1->y-$p3->y;    
+
+        // calculate the lengths of the two lines  
+        $len1=sqrt($xD1*$xD1+$yD1*$yD1);  
+        $len2=sqrt($xD2*$xD2+$yD2*$yD2);  
+
+        // calculate angle between the two lines.  
+        $dot=($xD1*$xD2+$yD1*$yD2); // dot product  
+        $deg=$dot/($len1*$len2);  
+
+        // if abs(angle)==1 then the lines are parallell,  
+        // so no intersection is possible  
+        if(abs($deg)==1) return false;  
+
+        // find intersection Pt between two lines  
+        $pt=new Point(0,0);  
+        $div=$yD2*$xD1-$xD2*$yD1;  
+        $ua=($xD2*$yD3-$yD2*$xD3)/$div;  
+        $ub=($xD1*$yD3-$yD1*$xD3)/$div;  
+        $pt->x=$p1->x+$ua*$xD1;  
+        $pt->y=$p1->y+$ua*$yD1;  
+
+        // calculate the combined $length of the two $segments  
+        // between Pt-p1 and Pt-p2  
+        $xD1=$pt->x-$p1->x;  
+        $xD2=$pt->x-$p2->x;  
+        $yD1=$pt->y-$p1->y;  
+        $yD2=$pt->y-$p2->y;  
+        $segmentLen1=sqrt($xD1*$xD1+$yD1*$yD1)+sqrt($xD2*$xD2+$yD2*$yD2);  
+
+        // calculate the combined $length of the two $segments  
+        // between Pt-p3 and Pt-p4  
+        $xD1=$pt->x-$p3->x;  
+        $xD2=$pt->x-$p4->x;  
+        $yD1=$pt->y-$p3->y;  
+        $yD2=$pt->y-$p4->y;  
+        $segmentLen2=sqrt($xD1*$xD1+$yD1*$yD1)+sqrt($xD2*$xD2+$yD2*$yD2);  
+
+        // if the $lengths of both sets of $segments are the same as  
+        // the $lenghts of the two lines the point is act$uall$y  
+        // on the line $segment.  
+
+        // if the point isn’t on the line, return null  
+        if(abs($len1-$segmentLen1)>0.01 || abs($len2-$segmentLen2)>0.01)  
+            return false;  
+
+        // return the valid intersection  
+        return true;  
+    }  
     
     public static function doGravMineDamage($ships){
         $affectedShips = array();
@@ -345,7 +517,7 @@ class ConvexHull
      * @param float $point 
      * @return float
      */
-    protected function calculateDistanceIndicator( array $start, array $end, array $point ) 
+    protected function calculateDistanceIndicator( $start, $end, $point ) 
     {
         /*
          * The real distance value could be calculated as follows:
@@ -378,7 +550,7 @@ class ConvexHull
             $point->y - $start->y
         );
 
-        return ( ( $vPoint->y * $vLine->x ) - ( $vPoint->x * $vLine->y ) );
+        return ( ( $vPoint[1] * $vLine[0] ) - ( $vPoint[0] * $vLine[1] ) );
     }
 
     /**
@@ -393,7 +565,7 @@ class ConvexHull
      * @param array $points 
      * @return array( Point )
      */
-    protected function getPointDistanceIndicators( array $start, array $end, array $points ) 
+    protected function getPointDistanceIndicators( $start, $end, array $points ) 
     {
         $resultSet = array();
 
@@ -467,7 +639,7 @@ class ConvexHull
      * @param array $end 
      * @return array
      */
-    protected function quickHull( array $points, array $start, array $end ) 
+    protected function quickHull( array $points, $start, $end ) 
     {
         $pointsLeftOfLine = $this->getPointDistanceIndicators( $start, $end, $points );
         $newMaximalPoint = $this->getPointWithMaximumDistanceFromLine( $pointsLeftOfLine );

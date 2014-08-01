@@ -20,3 +20,7 @@ var GraviticMine = function(json, ship)
 GraviticMine.prototype = Object.create( Aoe.prototype );
 GraviticMine.prototype.constructor = GraviticMine;
 
+GraviticMine.prototype.displayFireInPhase = function(phase){
+        return true;
+}
+

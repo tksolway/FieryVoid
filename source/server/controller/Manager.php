@@ -308,7 +308,8 @@ class Manager{
                 Debug::log("*******************");
                 Debug::log("we are in phase 31!");
                 Debug::log("*******************");
-                $ret = self::handleWeaponBasedMovement($ships, $gdS);
+                $ret = self::handleWeaponBasedMovementFireOrders($ships, $gdS);
+//                $ret = self::handleWeaponBasedMovement($ships, $gdS);
             }else if ($gdS->phase == 3){
                 $ret = self::handleFiringOrders($ships, $gdS);
             }else if ($gdS->phase == 4){
@@ -398,16 +399,27 @@ class Manager{
         return true;
     }
     
+    private static function handleWeaponBasedMovementFireOrders($ships, $gamedata){
+        // currently not implemented. This is for all other weapons that fire
+        // in the Weapon Based Movement phase.
+    }
+    
     private static function handleWeaponBasedMovement($ships, $gamedata){
+        // To allow for the ID of the ballistics fireOrders to be updated in $servergamedata
+        $servergamedata = self::$dbManager->getTacGamedata($gamedata->forPlayer, $gamedata->id);
+        $updateShips = $servergamedata->ships;
+        
         if(self::$weaponBasedMoveHandler == null){
-            self::$weaponBasedMoveHandler = new WeaponBasedMovHandler($gamedata);
+            self::$weaponBasedMoveHandler = new WeaponBasedMovHandler($servergamedata);
         }
-
-        self::$weaponBasedMoveHandler->checkForFireOrders($ships);
-        self::$weaponBasedMoveHandler->handleWeaponBasedMovement($ships, $gamedata);
+        
+        self::$weaponBasedMoveHandler->checkForFireOrders($updateShips);
+        self::$weaponBasedMoveHandler->handleWeaponBasedMovement($updateShips, $servergamedata);
         
         // Now this is only to handle end of phase, as there are only 
-        self::$dbManager->updatePlayerStatus($gamedata->id, $gamedata->forPlayer, $gamedata->phase, $gamedata->turn);
+        Debug::log("********** LENGTH OF UPDATED FIRE ORDERS: ".sizeof($servergamedata->getUpdatedFireOrders()));
+        self::$dbManager->updateFireOrders($servergamedata->getUpdatedFireOrders());
+        self::$dbManager->updatePlayerStatus($servergamedata->id, $servergamedata->forPlayer, $servergamedata->phase, $servergamedata->turn);
         
         return true;
     }
@@ -732,7 +744,7 @@ class Manager{
                 self::startWeaponBasedMovement($gamedata);
             }else{
                                 Debug::log("Manager 5");
-
+                self::handleWeaponBasedMovement($ships, $gamedata);
                 self::startWeaponAllocation($gamedata);
             }
         }

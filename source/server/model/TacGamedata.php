@@ -215,7 +215,7 @@ class TacGamedata{
         foreach ($this->ships as $ship){
             $fireOrders = $ship->getAllFireOrders();
             foreach($fireOrders as $fire){
-                if ($fire->updated == true)
+                if ($fire->updated)
                     $list[] = $fire;
             }
         }
@@ -442,8 +442,13 @@ class TacGamedata{
 
                     if ($fire->turn == $this->turn && $weapon->hidetarget && $this->phase < 4 && $ship->userid != $this->forPlayer){
                         $fire->targetid = -1;
-                        $fire->x = "null";
-                        $fire->y = "null";
+                        
+                        if($weapon->firesInPhase(31) && $this->phase == 3){
+                            // Do nothing.
+                        }else{
+                            $fire->x = "null";
+                            $fire->y = "null";
+                        }
 
                         foreach ($this->ballistics as $ball){
                             if ($ball->fireOrderId == $fire->id){
