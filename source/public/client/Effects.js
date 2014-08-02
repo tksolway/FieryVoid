@@ -78,7 +78,8 @@ window.effects = {
         
         for(var i in effects.gravMinesOrdersToDisplay){
             var gravMineFireOrder = effects.gravMinesOrdersToDisplay[i];
-            
+            var pos = hexgrid.positionToPixel({x:gravMineFireOrder.x, y:gravMineFireOrder.y});
+            effects.drawGravMineCenter(pos.x, pos.y, 1, gravMineFireOrder.id);
         }
     },
         
@@ -160,7 +161,7 @@ window.effects = {
                 
                 for(var i in weapon.fireOrders){
                     var fireOrder = weapon.fireOrders[i];
-                    effects.drawGravMineCenter(canvas, pos.x, pos.y, self.tics/self.totalTics, fireOrder.id);
+                    effects.drawGravMineCenter(pos.x, pos.y, self.tics/self.totalTics, fireOrder.id);
                 }
                
                 canvas.strokeStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
@@ -218,9 +219,9 @@ window.effects = {
         effects.frontAnimations.push(explosion);
     },
 
-    drawGravMineCenter: function (canvas, posX, posY, opacity, fireOrder_id){
+    drawGravMineCenter: function (posX, posY, opacity, fireOrder_id){
         var centerImg = new Image();
-        var imgSize = 200;
+        var curImgSize = 200*gamedata.zoom;
         centerImg.src = "img/grav_mine_blast.png";
         centerImg.style.opacity = 0.5;
         
@@ -230,18 +231,20 @@ window.effects = {
         if (!e.length){
             e = $("#templatecontainer .hexgravminecenter");
             e.attr("id", "hexgravminecenter_" + fireOrder_id);
-            $("canvas.hexgravminecentercanvas", e).attr("id", "gravminecentercanvas_"+fireOrder_id).attr("width", imgSize*gamedata.zoom).attr("height", imgSize*gamedata.zoom);
+            $("canvas.hexgravminecentercanvas", e).attr("id", "gravminecentercanvas_"+fireOrder_id).attr("width", curImgSize).attr("height", curImgSize);
             var n = e.clone(true).appendTo("#pagecontainer");
             n.data("fireOrder_id", fireOrder_id);
             
-            $("#hexgravminecenter_" + fireOrder_id).offset({ top: posY - imgSize/2, left: posX - imgSize/2 });
+            $("#hexgravminecenter_" + fireOrder_id).offset({ top: posY - curImgSize/2, left: posX - curImgSize/2 });
             
             ctx = document.getElementById("gravminecentercanvas_"+fireOrder_id).getContext("2d");
-            graphics.drawImage(ctx, imgSize/2, imgSize/2, imgSize*gamedata.zoom, imgSize*gamedata.zoom, centerImg, opacity);
+            graphics.drawImage(ctx, curImgSize/2, curImgSize/2, curImgSize, curImgSize, centerImg, opacity);
         }else{
             ctx = document.getElementById("gravminecentercanvas_"+fireOrder_id).getContext("2d");
             graphics.clearCanvas("gravminecentercanvas_"+fireOrder_id);
-            graphics.drawImage(ctx, imgSize/2, imgSize/2, imgSize*gamedata.zoom, imgSize*gamedata.zoom, centerImg, opacity);
+            $("#hexgravminecenter_" + fireOrder_id).offset({ top: posY - curImgSize/2, left: posX - curImgSize/2 });
+            $("canvas.hexgravminecentercanvas", e).attr("id", "gravminecentercanvas_"+fireOrder_id).attr("width", curImgSize).attr("height", curImgSize);
+            graphics.drawImage(ctx, curImgSize/2, curImgSize/2, curImgSize, curImgSize, centerImg, opacity);
         }
     },
     

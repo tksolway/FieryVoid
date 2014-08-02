@@ -43,7 +43,7 @@ function drawEntities(){
     hexgrid.drawHexGrid();
     hexgrid.drawGameSpace();
     shipManager.drawShips();
-//    effects.drawPersistentEffects();
+    effects.drawPersistentEffects();
     ballistics.drawBallistics();
     EWindicators.drawEWindicators();
     
