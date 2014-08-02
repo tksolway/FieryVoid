@@ -6,7 +6,7 @@ window.effects = {
     canvas: null,
     callback: null,
     animationcallback: null,
-    gravMinesToDisplay: Array(),
+    gravMinesOrdersToDisplay: Array(),
 
     animationLoop: function(){
         
@@ -71,7 +71,14 @@ window.effects = {
     
     drawPersistentEffects: function(){
         if(gamedata.gamephase == 4){
-            console.log("Get all gravmines");
+            // TODO: clear gravMinesOrdersToDisplay and get all currently active gravmines here.
+            // This is needed as there could have been a reload or just a load for the game
+            // while at the start of phase 4.
+        }
+        
+        for(var i in effects.gravMinesOrdersToDisplay){
+            var gravMineFireOrder = effects.gravMinesOrdersToDisplay[i];
+            
         }
     },
         
@@ -117,6 +124,13 @@ window.effects = {
             starsArray.push({radius:hexgrid.hexlenght*gamedata.zoom*weapon.animationExplosionScale*2+radiusRandom, angle:x*15+angleRandom, size:5+sizeRandom});
         }
         
+        // Add this grav mine to the gravMinesToDisplay array so it can be used
+        // when scrolling or resizing the game space
+        for(var i in weapon.fireOrders){
+            var fireOrder = weapon.fireOrders[i];
+            effects.gravMinesOrdersToDisplay.push(fireOrder);
+        }
+        
         var explosion = {
         
             tics:0,
@@ -144,14 +158,12 @@ window.effects = {
                     self.speed++;
                 }
                 
-                //effects.drawGravMineCenter(canvas, pos.x+self.radius, pos.y+self.radius);
                 for(var i in weapon.fireOrders){
                     var fireOrder = weapon.fireOrders[i];
                     effects.drawGravMineCenter(canvas, pos.x, pos.y, self.tics/self.totalTics, fireOrder.id);
                 }
                
                 canvas.strokeStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
-                //canvas.fillStyle = "rgba("+color[0]+","+(color[1]+self.green)+","+color[2]+","+0.08*a+")";
                 
                 canvas.fillStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
                 drawStars(canvas, self.stars, pos.x, pos.y);
