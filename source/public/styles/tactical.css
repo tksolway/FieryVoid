@@ -882,3 +882,13 @@ body.phase1 #botPanel .ewentry .button2{
 .shipSelectList .shiplistentry .ally.name{
     color:#2f5123;
 }
+
+#pagecontainer .hexgravminecenter{
+    position:absolute;
+    z-index:100;
+}
+
+.hexgravminecentercanvas{
+    z-index:101;
+}
+

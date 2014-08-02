@@ -6,6 +6,7 @@ window.effects = {
     canvas: null,
     callback: null,
     animationcallback: null,
+    gravMinesToDisplay: Array(),
 
     animationLoop: function(){
         
@@ -68,6 +69,12 @@ window.effects = {
         graphics.clearCanvas("effects");
     },
     
+    drawPersistentEffects: function(){
+        if(gamedata.gamephase == 4){
+            console.log("Get all gravmines");
+        }
+    },
+        
     addExplosion: function(pos, weapon){
         
         var type = weapon.animationExplosionType;
@@ -138,7 +145,10 @@ window.effects = {
                 }
                 
                 //effects.drawGravMineCenter(canvas, pos.x+self.radius, pos.y+self.radius);
-                effects.drawGravMineCenter(canvas, pos.x, pos.y, self.tics/self.totalTics);
+                for(var i in weapon.fireOrders){
+                    var fireOrder = weapon.fireOrders[i];
+                    effects.drawGravMineCenter(canvas, pos.x, pos.y, self.tics/self.totalTics, fireOrder.id);
+                }
                
                 canvas.strokeStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
                 //canvas.fillStyle = "rgba("+color[0]+","+(color[1]+self.green)+","+color[2]+","+0.08*a+")";
@@ -196,14 +206,31 @@ window.effects = {
         effects.frontAnimations.push(explosion);
     },
 
-    drawGravMineCenter: function (canvas, posX, posY, opacity){
+    drawGravMineCenter: function (canvas, posX, posY, opacity, fireOrder_id){
         var centerImg = new Image();
         var imgSize = 200;
         centerImg.src = "img/grav_mine_blast.png";
         centerImg.style.opacity = 0.5;
         
-        graphics.drawImage(canvas, posX, posY, imgSize*gamedata.zoom, imgSize*gamedata.zoom, centerImg, opacity);
-        //graphics.drawAndRotate(canvas, posX, posY, imgSize*gamedata.zoom, imgSize*gamedata.zoom, 0, centerImg, false);
+        var e = $("#pagecontainer #hexgravminecenter_"+fireOrder_id+"..hexgravminecenter");
+        var ctx = null;
+
+        if (!e.length){
+            e = $("#templatecontainer .hexgravminecenter");
+            e.attr("id", "hexgravminecenter_" + fireOrder_id);
+            $("canvas.hexgravminecentercanvas", e).attr("id", "gravminecentercanvas_"+fireOrder_id).attr("width", imgSize*gamedata.zoom).attr("height", imgSize*gamedata.zoom);
+            var n = e.clone(true).appendTo("#pagecontainer");
+            n.data("fireOrder_id", fireOrder_id);
+            
+            $("#hexgravminecenter_" + fireOrder_id).offset({ top: posY - imgSize/2, left: posX - imgSize/2 });
+            
+            ctx = document.getElementById("gravminecentercanvas_"+fireOrder_id).getContext("2d");
+            graphics.drawImage(ctx, imgSize/2, imgSize/2, imgSize*gamedata.zoom, imgSize*gamedata.zoom, centerImg, opacity);
+        }else{
+            ctx = document.getElementById("gravminecentercanvas_"+fireOrder_id).getContext("2d");
+            graphics.clearCanvas("gravminecentercanvas_"+fireOrder_id);
+            graphics.drawImage(ctx, imgSize/2, imgSize/2, imgSize*gamedata.zoom, imgSize*gamedata.zoom, centerImg, opacity);
+        }
     },
     
     addAoEExplosion: function(pos, weapon){
@@ -338,10 +365,6 @@ window.effects = {
         effects.doDisplayAllWeaponFire();
     },
     
-//    displayAllWeaponBasedMovementFire: function(){
-//        effects.doDisplayAllWeaponBasedMovementFire();
-//    },
-    
     displayAllWeaponBasedMovementFire: function(callback){
         effects.callback = callback;
         effects.doDisplayAllWeaponBasedMovementFire();
@@ -442,8 +465,7 @@ window.effects = {
         
         gamedata.effectsDrawing = false;
         windows.show();
-        animation.endAnimation();
-//        effects.callback();
+        effects.callback();
     },
     
     doDisplayAllWeaponFire: function(){

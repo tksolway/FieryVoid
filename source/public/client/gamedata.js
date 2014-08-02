@@ -455,23 +455,8 @@ gamedata = {
                 animation.setAnimating(animation.animateShipMoves,
                     function(){
                         infowindow.informPhase(5000, null);
-
-//                        animation.setAnimating(effects.displayAllWeaponBasedMovementFire, function(){
-//                            if (gamedata.waiting == false){
-//                                for (var i in gamedata.ships){
-//                                    var ship = gamedata.ships[i];
-//                                    if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
-//                                        gamedata.selectShip(ship, false);
-//                                        scrolling.scrollToShip(ship);
-//                                        break;
-//                                    }
-//                                }
-//                            }
-//                            
-//                         //   animation.endAnimation();
-//                        });
-//                    });
-                    effects.displayAllWeaponBasedMovementFire(function(){
+    
+                        effects.displayAllWeaponBasedMovementFire(function(){
                         if (gamedata.waiting == false){
                             for (var i in gamedata.ships){
                                 var ship = gamedata.ships[i];
@@ -482,11 +467,12 @@ gamedata = {
                                 }
                             }
                         }
-                        
-                        //animation.endAnimation();
                     });
                 });
             }else{
+                // TODO: no working code in this else branch.
+                // TODO when a firing phase for movement influencing weapons
+                // are implemented besides the grav mines.
                 infowindow.informPhase(5000, null);
                 gamedata.animating = true;
                 animation.cancelAnimation();
@@ -507,9 +493,6 @@ gamedata = {
                 });
             }
         }
-
-//        ballistics.initBallistics();
-        
         if (gamedata.waiting){
             ajaxInterface.startPollingGamedata();
         }

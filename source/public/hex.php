@@ -436,6 +436,10 @@
 -->
 
 <div id="templatecontainer">
+    
+    <div class="hexgravminecenter">
+        <canvas id="gravminecentercanvas" width="0" height="0" class="hexgravminecentercanvas"></canvas>
+    </div>
 
     <div class="hexship">
         
