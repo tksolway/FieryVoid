@@ -157,6 +157,17 @@
         
         }
         
+        public function getMovements($turn){
+            $movements = array();
+            
+            foreach($this->movement as $move) {
+                if ($move->turn == $turn)
+                    $movements[] = $move;
+            } 
+            
+            return $movements;
+        }
+        
         public function getLastTurnMoved(){
             $turn = 0;
             foreach($this->movement as $elementKey => $move) {
@@ -214,7 +225,7 @@
             
             foreach($this->movement as $elementKey => $move) {
                 if ($move->turn == $turn && $move->type != "start" && !$move->preturn){
-                    if ($move->type == "move" || $move->type == "turnleft" || $move->type == "turnright" || $move->type == "slipright" || $move->type == "slipleft" || $move->type == "pivotright" || $move->type == "pivotleft"){
+                    if ($move->type == "move" || $move->type == "turnleft" || $move->type == "turnright" || $move->type == "slipright" || $move->type == "slipleft" || $move->type == "pivotright" || $move->type == "pivotleft" || $move->type == "gslip"){
                         $move->animated = false;
                     }
                 }

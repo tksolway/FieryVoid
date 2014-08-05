@@ -194,6 +194,18 @@ class Manager{
         
     }
     
+    public static function submitGraviticMove($gameid, $shipid, $turn, $movements){
+        foreach($movements as $movement){
+            if($movement->type === null || $movement->type === "" || !substr('$movement->type', 0, 1) === 'g'){
+                // This is faulty or it's not a gravitic move
+                Debug::log("Manager.php: submitGraviticMove: Incorrect type for gravitic move. Move Type = ".$movement->type);
+                continue;
+            }
+            
+            self::$dbManager->submitMovement($gameid, $shipid, $turn, $movements);
+        }
+    }
+    
     public static function getTacGamedata($gameid, $userid, $turn, $phase, $activeship){
     
 	if (!is_numeric($gameid) || !is_numeric($userid) || !is_numeric($turn) || !is_numeric($phase) || !is_numeric($activeship) )

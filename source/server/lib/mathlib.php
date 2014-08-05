@@ -160,7 +160,11 @@ class Mathlib{
     public static function getHexToDirection($d, $x, $y){
         
         $pos = self::hexCoToPixel($x, $y);
+         Debug::log("getHexToDirection: pos x = ".$pos["x"]." y = ".$pos["y"]);
         $pos2 = self::getPointInDirection(self::$hexHeight, $d, $pos["x"], $pos["y"]);
+        Debug::log("getHexToDirection: hexHeight = ".self::$hexHeight);
+        Debug::log("getHexToDirection: pos2 x = ".$pos2["x"]." y = ".$pos2["y"]);
+        
         return self::pixelCoToHex($pos2["x"], $pos2["y"]);
         
         

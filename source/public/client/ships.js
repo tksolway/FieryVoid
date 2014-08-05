@@ -465,12 +465,20 @@ window.shipManager = {
             if (ship.movement[i].commit == false)
                 break;
 
+            if(gamedata.gamephase == 3 && !animation.gravMovesAnimated && ship.movement[i].type.charAt(0)=='g'){
+                continue;
+            }
+            
+            if(animation.gravMovesAnimated){
+                console.log("already animated");
+            }
+            
             movement = ship.movement[i];
 
             if (movement.animated == true)
                 continue;
 
-            if (movement.type=="move" || movement.type=="slipright" || movement.type=="slipleft"){
+            if (movement.type=="move" || movement.type=="slipright" || movement.type=="slipleft" || movement.type=="gslip"){
                 var last = ship.movement[i-1];
 
                 if (!last)

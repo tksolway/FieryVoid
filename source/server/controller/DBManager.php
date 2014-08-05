@@ -991,6 +991,9 @@ class DBManager {
     
     private function getMovesForShips($gamedata){
         
+        // First get the normal moves. Then add the gravitic moves of this turn
+        // only, if there are any.
+        
         $stmt = $this->connection->prepare("
             SELECT 
                 id, shipid, type, x, y, xOffset, yOffset, speed, heading, facing, preturn, turn, value, requiredthrust, assignedthrust, at_initiative
@@ -1014,10 +1017,7 @@ class DBManager {
                     ORDER BY id DESC
                     LIMIT 1
                     ) 
-                ) 
-            ORDER BY
-                id ASC
-            
+                )
         ");
 
         if ($stmt)
@@ -1038,7 +1038,51 @@ class DBManager {
             $stmt->close();
         }
         
-        
+//        $stmt = $this->connection->prepare("
+//            SELECT 
+//                id, shipid, type, x, y, xOffset, yOffset, speed, heading, facing, preturn, turn, value, requiredthrust, assignedthrust, at_initiative
+//            FROM 
+//                tac_shipmovement as s1
+//            WHERE
+//                gameid = ?
+//            AND
+//                ( turn = ? 
+//                AND 
+//                s1.id = 
+//                    (
+//                    SELECT
+//                        id
+//                    FROM 
+//                        tac_shipmovement as s2
+//                    WHERE 
+//                        gameid = ? 
+//                        AND
+//                        shipid = s1.shipid
+//                        AND
+//                        type LIKE 'g%'
+//                    ORDER BY id DESC
+//                    LIMIT 1
+//                    ) 
+//                )
+//        ");
+//
+//        if ($stmt)
+//        {
+//            $fetchturn = $gamedata->turn-1;
+//            $stmt->bind_param('iii', $gamedata->id, $fetchturn, $gamedata->id);
+//            $stmt->bind_result($id, $shipid, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $preturn, $turn, $value, $requiredthrust, $assignedthrust, $at_initiative);
+//            $stmt->execute();
+//            while ($stmt->fetch())
+//            {
+//                $move = new MovementOrder($id, $type, $x, $y, $xOffset, $yOffset, $speed, $heading, $facing, $preturn, $turn, $value, $at_initiative);
+//                $move->setReqThrustJSON($requiredthrust);
+//                $move->setAssThrustJSON($assignedthrust);
+//
+//                $gamedata->getShipById($shipid)->setMovement( $move );
+//            }
+//                
+//            $stmt->close();
+//        }
     }
     
     private function getEWForShips($gamedata){

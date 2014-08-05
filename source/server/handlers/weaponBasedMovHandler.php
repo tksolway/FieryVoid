@@ -20,9 +20,7 @@ class WeaponBasedMovHandler{
             foreach ($fireOrders as $i=>$fireOrder){
                 $weapon = $ship->getSystemById($fireOrder->weaponid);
                 if($weapon->firesInPhase(31)){
-                    Debug::log("UPDATING FIRE ORDER");
                     if($weapon instanceof GraviticMine){
-                        Debug::log("UPDATING FIRE ORDER id: ".$fireOrders[$i]->id);
                         $fireOrders[$i]->shotshit++;
                         $fireOrders[$i]->rolled = 1;
                         $fireOrders[$i]->updated = true; 
@@ -96,9 +94,17 @@ class GravMineHandler{
             foreach($shipsInBlast as $ship){
                 // For each ship ID, add the FireOrder that that ship is caught
                 // in to the array at the index of the ship id.
+                
                 if(isset($affectedShips[$ship->id])){
                     // the ship id is already in the array. Add the fireOrder
                     // to the array.
+                    
+                    // First check if there is already a mine in the array of the current
+                    // ship. If so, ignore it.
+                    if($this->arrayHasMineOrderOnHex($gravMineFireOrder, $affectedShips[$ship->id])){
+                        continue;
+                    }
+                    
                     $affectedShips[$ship->id][] = $gravMineFireOrder;
                 }else{
                     // The ship id is not yet in the array. Make a new fireOrder
@@ -165,9 +171,31 @@ class GravMineHandler{
         }
     }
     
+    // Method to check if a mine on that hex is already in the array.
+    // Return true if there is a mine there
+    // Return false if there isn't.
+    private function arrayHasMineOrderOnHex($mineOrder, $mineOrderArray){
+        foreach($mineOrderArray as $order){
+            if($order->x == $mineOrder->x && $order->y == $mineOrder->y){
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
     // Moves a ship towards the closest mine
     private function moveShipToMine($ship, $mineOrderArray){
-        Debug::log("************ moveShipToMine ****************");
+        // First check if perhaps there is already a gslip listed for this ship
+        // in the current turn. If so, just return. This slip has already been entered.
+        // (Could happen when the page is reloaded.
+        $shipmoves = $ship->getMovements(TacGamedata::$currentTurn);
+        
+        foreach($shipmoves as $move){
+            if($move->type === "gslip" && $move->turn == TacGamedata::$currentTurn){
+                return;
+            }
+        }
 
         $mineCo = Mathlib::hexCoToPixel($mineOrderArray[0]->x, $mineOrderArray[0]->y);
         $shipCo = $ship->getCoPos();
@@ -185,9 +213,75 @@ class GravMineHandler{
         
         // Check in what direction the ship should move.
         // Check angle, and depending on that, make a movement order
-        $heading = Mathlib::getCompassHeadingOfPoint($shipCo, $mineCo);
+        $heading = Mathlib::getCompassHeadingOfPoint($shipCo, $mineCo );
+        // Make certain $heading in only in multitudes of 60 degrees
+        $heading60 = 60*floor(($heading+30)/60);
+        $headingNr = floor(($heading+30)/60);
+        $lastmove = $ship->getLastMovement();
         
-        Debug::log("****************  Heading : ".$heading." *********************");
+        Debug::log("heading of gravmine = ".$heading);
+        Debug::log("heading60 of gravmine = ".$heading60);
+        Debug::log("headingNr of gravmine = ".$headingNr);
+        
+        // Math to calculate. Add 30 to line up hexes. Then integer division by 60 gives the right hex.
+        //$hexDirection = floor(($heading+30)/60);
+        // This call doesn't work: $newPos = Mathlib::getHexToDirection($heading60, $lastmove->x, $lastmove->y);
+        Debug::log("lastmove x = ".$lastmove->x." y = ".$lastmove->y);
+        
+        $newPos = array("x" => $lastmove->x,"y" => $lastmove->y);
+        Debug::log("newpos x = ".$newPos["x"]." y = ".$newPos["y"]);
+        
+        switch($headingNr){
+            case 0:
+                $newPos["x"] = $newPos["x"] + 1;
+                break;
+            case 1:
+                if($newPos["y"]%2 == 0){
+                    // the y-coordinate is even
+                    $newPos["x"] = $newPos["x"] + 1;
+                    $newPos["y"] = $newPos["y"] + 1;
+                }else{
+                    $newPos["y"] = $newPos["y"] + 1;
+                }
+                break;
+            case 2:
+                if($newPos["y"]%2 == 0){
+                    // the y-coordinate is even
+                    $newPos["y"] = $newPos["y"] + 1;
+                }else{
+                    $newPos["x"] = $newPos["x"] - 1;
+                    $newPos["y"] = $newPos["y"] + 1;
+                }
+                break;
+            case 3:
+                $newPos["x"] = $newPos["x"] - 1;
+                break;
+            case 4:
+                if($newPos["y"]%2 == 0){
+                    // the y-coordinate is even
+                    $newPos["y"] = $newPos["y"] - 1;
+                }else{
+                    $newPos["x"] = $newPos["x"] - 1;
+                    $newPos["y"] = $newPos["y"] - 1;
+                }
+                break;
+            case 5:
+                if($newPos["y"]%2 == 0){
+                    // the y-coordinate is even
+                    $newPos["x"] = $newPos["x"] - 1;
+                    $newPos["y"] = $newPos["y"] - 1;
+                }else{
+                    $newPos["y"] = $newPos["y"] - 1;
+                }
+                break;
+        }
+        
+        $movements = array();
+        $movement = new MovementOrder(null, "gslip", $newPos["x"], $newPos["y"], 0, 0, $lastmove->speed, $lastmove->heading, $lastmove->facing, false, TacGamedata::$currentTurn, 0, $ship->iniative);
+        
+        $movements[] = $movement;
+        
+        Manager::submitGraviticMove(TacGamedata::$currentGameID, $ship->id, TacGamedata::$currentTurn, $movements);
     }
     
     // Checks if a given hexagon is crossed by a line

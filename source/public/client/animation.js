@@ -4,20 +4,21 @@ window.animation = {
     movementspeed: 10,
     turningspeed: 15,
     waitingElement: null,
-    animating:null,
+    animating:new Array(),
     shipAnimating:0,
-    afterAnimationCallback: null,
+    afterAnimationCallback: new Array(),
     animationloopdelay:0,
+    gravMovesAnimated:false,
     
     animationLoop: function(){
         
         animation.animateActiveship();
         
-        if (animation.animating){
+        if (animation.animating.length > 0){
             if(animation.animationloopdelay > 0){
                 animation.animationloopdelay--;
             }else{
-                animation.animating();
+                animation.animating[animation.animating.length-1]();
             }
         }
     
@@ -27,19 +28,22 @@ window.animation = {
     setAnimating: function(animatefunction, callback){
         //console.log("setAnimating");
         animation.animationloopdelay = 0;
-        animation.animating = animatefunction;
+        animation.animating.push(animatefunction);
         gamedata.animating = true;
-        animation.afterAnimationCallback = callback;
-    
+        animation.afterAnimationCallback.push(callback);
     },
     
     endAnimation: function(){
         //console.log("endAnimating");
         gamedata.animating = false;
-        animation.animating = null;
+        animation.animating.pop();
         animation.shipAnimating = -1;
-        if (animation.afterAnimationCallback)
-            animation.afterAnimationCallback();
+        if (animation.afterAnimationCallback.length > 0){
+            // Construction needed to pop callback before actually calling it.
+            tempCallback = animation.afterAnimationCallback[animation.afterAnimationCallback.length-1];
+            animation.afterAnimationCallback.pop();
+            tempCallback();
+        }
     },
     
     animateActiveship: function(){
@@ -106,11 +110,21 @@ window.animation = {
         var done = false;
         var found = false;
         var shipchanged = false;
+        
+        if(gamedata.gamephase == 3){
+            animation.gravMovesAnimated = false;
+        }
+        
         for (var i in gamedata.ships){
             var ship = gamedata.ships[i];
                     
             for (var a in ship.movement){
                 var movement = ship.movement[a];
+                
+                // skip any gravitic movement during normal ship moves
+                if(movement.type.charAt(0) == 'g'){
+                    continue;
+                }
                 
                 if (movement.animated == false){
                     if (!movement.commit)
@@ -172,7 +186,97 @@ window.animation = {
 
         return true;
     },
+
+    animateShipGravMoves: function(){
     
+        
+        var done = false;
+        var found = false;
+        var shipchanged = false;
+
+        // Needed to be done here to make certain the grav moves are animated
+        // otherwise the method drawShip later in this function will not know
+        // it's time to animate the grav moves.
+        animation.gravMovesAnimated = true;
+        
+        // Go a bit slower for gravitic moves
+        animation.movementspeed = 40;
+        
+        for (var i in gamedata.ships){
+            var ship = gamedata.ships[i];
+                    
+            for (var a in ship.movement){
+                var movement = ship.movement[a];
+                
+                // skip any non-gravitic movement during normal ship moves
+                if(movement.type.charAt(0) != 'g'){
+                    continue;
+                }
+                
+                if (movement.animated == false){
+                    if (!movement.commit)
+                        break;
+                            
+                    found = true;
+                    if (animation.shipAnimating != ship.id){
+                        animation.shipAnimating = ship.id
+                        scrolling.scrollToShip(ship);
+                        shipchanged = true;
+                        combatLog.logMoves(ship);
+                        
+                    }
+                    
+                    if (animation.checkGravAnimationDone(movement)){
+                        //console.log("animated: ship " +ship.name +" move: " +movement.type);
+                        if (!animation.hasMoreforAnimate(ship, movement)){
+                            done = true;
+                        }
+                        movement.animated = true;
+                        gamedata.shipStatusChanged(ship);
+                        ballistics.calculateBallisticLocations();
+                        ballistics.drawBallistics();
+                        shipManager.drawShip(ship);
+                    }else{
+                        //console.log(" - animating: ship " +ship.name +" move: " +movement.type);
+                        ballistics.hideBallistics();
+                        movement.animationtics ++;
+                        shipManager.drawShip(ship);
+                        break;
+                    }
+                }
+            
+            }
+            
+            if (found){
+                if (done)
+                    animation.animationloopdelay = 30;
+                    
+                break;
+            }
+            
+        }
+        
+        if (!found){
+            animation.movementspeed = 10;
+            animation.endAnimation();
+        }
+        
+        
+    },
+
+    checkGravAnimationDone: function(movement){
+    
+        if ( movement.type=="gslip"){
+            return (movement.animationtics >= animation.movementspeed);
+        }
+        
+        if (movement.type=="gpivot"){
+            return (movement.animationtics >= animation.turningspeed);
+        }
+
+        return true;
+    },
+
     animateWaiting: function(){
         if (animation.waitingElement == null){
             animation.waitingElement  = $("#phaseheader .waiting.value");

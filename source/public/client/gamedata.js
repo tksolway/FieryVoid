@@ -457,22 +457,28 @@ gamedata = {
                         infowindow.informPhase(5000, null);
     
                         effects.displayAllWeaponBasedMovementFire(function(){
-                        if (gamedata.waiting == false){
-                            for (var i in gamedata.ships){
-                                var ship = gamedata.ships[i];
-                                if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
-                                    gamedata.selectShip(ship, false);
-                                    scrolling.scrollToShip(ship);
-                                    break;
+                        
+                        animation.setAnimating(animation.animateShipGravMoves,
+                            function(){
+                            
+                            if (gamedata.waiting == false){
+                                for (var i in gamedata.ships){
+                                    var ship = gamedata.ships[i];
+                                    if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
+                                        gamedata.selectShip(ship, false);
+                                        scrolling.scrollToShip(ship);
+                                        break;
+                                    }
                                 }
                             }
-                        }
+                        });
                     });
                 });
             }else{
                 // TODO: no working code in this else branch.
                 // TODO when a firing phase for movement influencing weapons
                 // are implemented besides the grav mines.
+                animation.gravMovesAnimated = false;
                 infowindow.informPhase(5000, null);
                 gamedata.animating = true;
                 animation.cancelAnimation();
@@ -492,7 +498,13 @@ gamedata = {
                     }
                 });
             }
+            
+//            animation.setAnimating(animation.animateShipGravMoves, function(){
+//                console.log("grav moves done.");
+//            });
         }
+        
+        
         if (gamedata.waiting){
             ajaxInterface.startPollingGamedata();
         }
