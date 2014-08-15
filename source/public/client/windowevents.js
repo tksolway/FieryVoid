@@ -40,13 +40,12 @@ $(window).resize(function () {
  
 function drawEntities(){
     
+    effects.drawPersistentEffects();
     hexgrid.drawHexGrid();
     hexgrid.drawGameSpace();
     shipManager.drawShips();
-    effects.drawPersistentEffects();
     ballistics.drawBallistics();
     EWindicators.drawEWindicators();
-    
 }
  
 jQuery(function(){

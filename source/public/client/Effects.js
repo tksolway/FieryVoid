@@ -7,6 +7,7 @@ window.effects = {
     callback: null,
     animationcallback: null,
     gravMinesOrdersToDisplay: Array(),
+    turn4EffectsInitialised: false,
 
     animationLoop: function(){
         
@@ -70,14 +71,40 @@ window.effects = {
     },
     
     drawPersistentEffects: function(){
+        
+        if(effects.turn4EffectsInitialised || !(gamedata.gamephase == 4 || gamedata.gamephase == 3)){
+            // all gravmines have been animated.
+            return;
+        }
+        
         if(gamedata.gamephase == 4){
             // TODO: clear gravMinesOrdersToDisplay and get all currently active gravmines here.
             // This is needed as there could have been a reload or just a load for the game
             // while at the start of phase 4.
+            if(effects.gravMinesOrdersToDisplay.length == 0){
+                for(var i in gamedata.ships){
+                    var ship = gamedata.ships[i];
+                    
+                    for(var j in ship.systems){
+                        var system = ship.systems[j];
+                        
+                        if(system instanceof GraviticMine){
+                            for(var k in system.fireOrders){
+                                effects.gravMinesOrdersToDisplay.push(system.fireOrders[k]);
+                            }
+                        }
+                    }
+                }
+            }
         }
         
-        for(var i in effects.gravMinesOrdersToDisplay){
-            var gravMineFireOrder = effects.gravMinesOrdersToDisplay[i];
+        for(var l in effects.gravMinesOrdersToDisplay){
+            var gravMineFireOrder = effects.gravMinesOrdersToDisplay[l];
+            
+            if($("#hexgravminecenter_" + gravMineFireOrder.id).data("animating")){
+                continue;
+            }
+            
             var pos = hexgrid.positionToPixel({x:gravMineFireOrder.x, y:gravMineFireOrder.y});
             effects.drawGravMineCenter(pos.x, pos.y, 1, gravMineFireOrder.id);
         }
@@ -96,10 +123,14 @@ window.effects = {
         if (type == "AoE")
             effects.addAoEExplosion(pos, weapon);
         if(type == "GravMine")
-            effects.addGravMineExplosion(pos, weapon);
+            if(gamedata.gamephase == 3){
+                effects.addGravMineImplosion(pos, weapon);
+            }else if (gamedata.gamephase == 4){
+                effects.addGravMineExplosion(pos, weapon);
+            }
     },
     
-    addGravMineExplosion: function(pos, weapon){
+    addGravMineImplosion: function(pos, weapon){
         
         var r = hexgrid.hexlenght*gamedata.zoom*weapon.animationExplosionScale*2;
         var speed = Math.floor((2*Math.random()+10));
@@ -219,11 +250,116 @@ window.effects = {
         effects.frontAnimations.push(explosion);
     },
 
-    drawGravMineCenter: function (posX, posY, opacity, fireOrder_id){
+    
+    addGravMineExplosion: function(pos, weapon){
+        
+        var r = hexgrid.hexlenght*gamedata.zoom*weapon.animationExplosionScale*2;
+        var speed = Math.floor((2*Math.random()+10));
+        var totalTics = 2*Math.ceil(r/speed);
+        var speedTicsIncrement = Math.floor(totalTics/22);
+        
+        var explosion = {
+        
+            tics:0,
+            totalTics:totalTics,
+            scale:weapon.animationExplosionScale,
+            weapon:weapon,
+            size:r,
+            startsize:1,
+            radius:r,
+            speed:speed,
+            dissappear:Math.floor(2*Math.random()+7),
+            green:0,
+            pos:pos,
+            draw:function(self){
+                var canvas = effects.getCanvas();
+                var size = self.startsize;
+                var pos = self.pos;
+                var color = weapon.explosionColor;
+                var colorChanged = calculateExplosionColor(color);
+                
+                if(self.tics < (self.totalTics/2)){
+                    for(var i in weapon.fireOrders){
+                        var fireOrder = weapon.fireOrders[i];
+                        $("#hexgravminecenter_" + fireOrder.id).data("animating", true);
+                        effects.drawGravMineCenter(pos.x, pos.y, ((self.totalTics/2)-self.tics)/(self.totalTics/2), fireOrder.id);
+                        
+                        if(self.tics < ((self.totalTics/2) - self.dissappear)){
+//                            effects.drawGravMineSwirl(pos.x, pos.y, self.tics/(self.totalTics/2), fireOrder.id, self.tics/(self.totalTics/2));
+                            effects.drawGravMineCenter(pos.x, pos.y, (1-self.tics/(self.totalTics/2)), fireOrder.id, self.tics/(self.totalTics/2));
+                        }else{
+//                            effects.drawGravMineSwirl(pos.x, pos.y, ((self.totalTics/2)-self.tics)/self.dissappear, fireOrder.id, self.tics/(self.totalTics/2));
+                            effects.drawGravMineCenter(pos.x, pos.y, ((self.totalTics/2)-self.tics)/self.dissappear, fireOrder.id, self.tics/(self.totalTics/2));
+                        }
+                    }
+                }else{
+                    var a = getAlpha();
+                    
+                    self.startsize += self.speed;
+                    
+                    canvas.strokeStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
+
+                    canvas.fillStyle = "rgba("+colorChanged[0]+","+(colorChanged[1]+self.green)+","+colorChanged[2]+","+0.18*a+")";
+
+                    graphics.drawCircle(canvas, pos.x, pos.y, size-20, 40);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size-10, 30);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size-5, 20);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size, 15);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size, 12);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size, 8);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size, 6);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size, 4);
+                    graphics.drawCircle(canvas, pos.x, pos.y, size, 2);
+                }
+                
+                self.tics++;
+                
+                
+                function getAlpha(){
+                    a = 1.0;
+                    
+                    var alphaTicks = self.tics - self.totalTics/2;
+                    
+                    if (self.tics > (self.totalTics - self.dissappear)){
+                        
+                        var t = alphaTicks - (self.totalTics/2 - self.dissappear);
+                        a *= (1-t/self.dissappear);
+                        
+                    }
+                    
+                   return a;
+                }
+
+                function calculateExplosionColor(color){
+                    var retArray = new Array(color.length);
+                    
+                    for(var i = 0; i < color.length; i++){
+//                        retArray[i] = Math.floor(color[i] - (self.tics * (color[i]/self.totalTics)));
+                        retArray[i] = Math.floor(self.tics * (color[i]/self.totalTics));
+                    }
+                    
+                    return retArray;
+                }
+            },
+            callback:effects.doneDisplayingWeaponFire
+        
+        }
+        
+        effects.frontAnimations.push(explosion);
+    },
+
+    drawGravMineCenter: function (posX, posY, opacity, fireOrder_id, scaling){
         var centerImg = new Image();
-        var curImgSize = 200*gamedata.zoom;
+        var curImgSize = 0;
+        
+        if(!scaling){
+            curImgSize = 200*gamedata.zoom;
+        }else{
+            curImgSize = 200*gamedata.zoom*(1-scaling);
+        }
+        
         centerImg.src = "img/grav_mine_blast.png";
-        centerImg.style.opacity = 0.5;
+        centerImg.style.opacity = opacity;
         
         var e = $("#pagecontainer #hexgravminecenter_"+fireOrder_id+"..hexgravminecenter");
         var ctx = null;
@@ -238,16 +374,42 @@ window.effects = {
             $("#hexgravminecenter_" + fireOrder_id).offset({ top: posY - curImgSize/2, left: posX - curImgSize/2 });
             
             ctx = document.getElementById("gravminecentercanvas_"+fireOrder_id).getContext("2d");
-            graphics.drawImage(ctx, curImgSize/2, curImgSize/2, curImgSize, curImgSize, centerImg, opacity);
+
+            centerImg.onload = function(){
+                graphics.drawImage(ctx, curImgSize/2, curImgSize/2, curImgSize, curImgSize, centerImg, opacity);
+            }
         }else{
             ctx = document.getElementById("gravminecentercanvas_"+fireOrder_id).getContext("2d");
-            graphics.clearCanvas("gravminecentercanvas_"+fireOrder_id);
             $("#hexgravminecenter_" + fireOrder_id).offset({ top: posY - curImgSize/2, left: posX - curImgSize/2 });
             $("canvas.hexgravminecentercanvas", e).attr("id", "gravminecentercanvas_"+fireOrder_id).attr("width", curImgSize).attr("height", curImgSize);
-            graphics.drawImage(ctx, curImgSize/2, curImgSize/2, curImgSize, curImgSize, centerImg, opacity);
+
+                graphics.drawImage(ctx, curImgSize/2, curImgSize/2, curImgSize, curImgSize, centerImg, opacity);
         }
     },
-    
+
+    drawGravMineSwirl: function (posX, posY, opacity, fireOrder_id, scaling){
+        var swirlImg = new Image();
+        var curImgSize = 200*gamedata.zoom;
+        var swirlImgSize = (150*(1-scaling) + 50)*gamedata.zoom;
+        
+        swirlImg.src = "img/grav_mine_swirl.png";
+        swirlImg.style.width = swirlImgSize;
+        swirlImg.style.height = 'auto';
+//        centerImg.style.opacity = 0.5;
+        
+        var e = $("#pagecontainer #hexgravminecenter_"+fireOrder_id+"..hexgravminecenter");
+
+        if (!e.length){
+            console.log("Something is wrong: Grav mine center not found!");
+        }else{
+            var ctx = document.getElementById("gravminecentercanvas_"+fireOrder_id).getContext("2d");
+//            graphics.clearCanvas("gravminecentercanvas_"+fireOrder_id);
+            $("#hexgravminecenter_" + fireOrder_id).offset({ top: posY - curImgSize/2, left: posX - curImgSize/2 });
+//            $("canvas.hexgravminecentercanvas", e).attr("id", "gravminecentercanvas_"+fireOrder_id).attr("width", curImgSize).attr("height", curImgSize);
+            graphics.drawAndRotateImage(ctx, curImgSize/2, curImgSize/2, swirlImgSize, swirlImgSize, swirlImg, opacity, opacity*200);
+        }
+    },
+
     addAoEExplosion: function(pos, weapon){
         
         var r = hexgrid.hexlenght*gamedata.zoom*weapon.animationExplosionScale*2;

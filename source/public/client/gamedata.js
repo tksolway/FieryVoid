@@ -372,8 +372,10 @@ gamedata = {
         
         if (gamedata.gamephase == 4){
             if (gamedata.waiting == false){
+                effects.drawPersistentEffects();
                 effects.displayAllWeaponFire(function(){
 					gamedata.subphase = 1;
+                    effects.turn4EffectsInitialised = true;
                     damageDrawer.checkDamages();
                     infowindow.informPhase(5000, null);
                     

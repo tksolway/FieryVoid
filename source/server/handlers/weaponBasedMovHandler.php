@@ -164,9 +164,12 @@ class GravMineHandler{
                     if($this->checkForPointInBlastArea($hexCorner, $surroundingPoints)){
                         // Ship is in mine area
                         Debug::log("SHIP IS CAUGHT IN 3+ GRAV MINES");
-                        continue;
+                        return;
                     }
                 }
+                
+                Debug::log("SHIP IS CAUGHT OUTSIDE 3+ GRAV MINES");
+                $this->moveShipToMine($ship, $mineOrderArray);
             }
         }
     }
@@ -184,6 +187,77 @@ class GravMineHandler{
         return false;
     }
     
+    // Returns the closest mine to the ship.
+    private function getClosestMineCo($ship, $mineOrderArray){
+        $retMineOrder = $mineOrderArray[0];
+        $mineCo = Mathlib::hexCoToPixel($retMineOrder->x, $retMineOrder->y);
+        $shipCo = $ship->getCoPos();
+        $distance = Mathlib::getDistanceHex($mineCo, $shipCo);
+        
+        // First find the closest mine
+        foreach($mineOrderArray as $mineOrder){
+            $curMineCo = Mathlib::hexCoToPixel($mineOrder->x, $mineOrder->y);
+            
+            if(Mathlib::getDistanceHex($curMineCo, $shipCo) < $distance){
+                $retMineOrder = $mineOrder;
+                $mineCo = $curMineCo;
+                $distance = Mathlib::getDistanceHex($mineCo, $shipCo);
+            }
+        }
+        
+        return $retMineOrder;
+    }
+    
+    private function getGravMineDamage($ship, $distance){
+        //0:Light, 1:Medium, 2:Heavy, 3:Capital, 4:Enormous
+        switch($ship->shipSizeClass){
+            case -1:
+                // fighter unit
+                return $distance;
+                break;
+            case 0:
+                // LCV
+                return 2*$distance;
+                break;
+            case 1:
+                // MCV
+                return 3*$distance;
+                break;
+            case 2:
+                // HCV
+                return 4*$distance;
+                break;
+            case 3:
+                // Capital
+                return 5*$distance;
+                break;
+            case 4:
+                // enormous non-base
+                return 6*$distance;
+                break;
+            default:
+                return 0;
+                break;
+        }
+    }
+    
+    // Enters damage from the closest mine
+    private function damageShipFromMines($ship, $mineOrderArray){
+        // First get closest
+        $closestMineOrder = $this->getClosestMineCo($ship, $mineOrderArray);
+        $mineCo = Mathlib::hexCoToPixel($closestMineOrder->x, $closestMineOrder->y);
+        $distance = round(Mathlib::getDistanceHex($mineCo, $ship->getCoPos()));
+        
+        if($distance < 0 || $distance > 5){
+            Debug::log("Strange distance in damageShipFromMines in weaponBasedMovHandler");
+            return;
+        }
+        
+        $damage = $this->getGravMineDamage($ship, $distance);
+        
+        
+    }
+    
     // Moves a ship towards the closest mine
     private function moveShipToMine($ship, $mineOrderArray){
         // First check if perhaps there is already a gslip listed for this ship
@@ -197,23 +271,13 @@ class GravMineHandler{
             }
         }
 
-        $mineCo = Mathlib::hexCoToPixel($mineOrderArray[0]->x, $mineOrderArray[0]->y);
-        $shipCo = $ship->getCoPos();
-        $distance = Mathlib::getDistanceHex($mineCo, $shipCo);
-        
-        // First find the closest mine
-        foreach($mineOrderArray as $mineOrder){
-            $curMineCo = Mathlib::hexCoToPixel($mineOrder->x, $mineOrder->y);
-            
-            if(Mathlib::getDistanceHex($curMineCo, $shipCo) < $distance){
-                $mineCo = $curMineCo;
-                $distance = Mathlib::getDistanceHex($mineCo, $shipCo);
-            }
-        }
+        // Get the coordinate of the closest mine.
+        $closestMineOrder = $this->getClosestMineCo($ship, $mineOrderArray);
+        $mineCo = Mathlib::hexCoToPixel($closestMineOrder->x, $closestMineOrder->y);
         
         // Check in what direction the ship should move.
         // Check angle, and depending on that, make a movement order
-        $heading = Mathlib::getCompassHeadingOfPoint($shipCo, $mineCo );
+        $heading = Mathlib::getCompassHeadingOfPoint($ship->getCoPos(), $mineCo );
         // Make certain $heading in only in multitudes of 60 degrees
         $heading60 = 60*floor(($heading+30)/60);
         $headingNr = floor(($heading+30)/60);

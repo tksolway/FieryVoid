@@ -231,6 +231,22 @@ window.graphics = {
         canvas.globalAlpha = opacity;
         canvas.drawImage(img, x-width, y-heigth, iw, ih);
         canvas.restore();
-    }
+    },
 
+    drawAndRotateImage: function(canvas, x, y, iw, ih, img, opacity, angle){
+		
+        var width = iw/2;
+        var height = ih/2;
+        
+        angle = angle * Math.PI / 180;              
+        canvas.save();
+        canvas.globalAlpha = opacity;
+        canvas.translate(x, y);
+        canvas.rotate(angle);
+        canvas.drawImage(img, -width, -height, iw, ih);
+        canvas.rotate(-angle);
+        canvas.translate(-x, -y);
+        canvas.restore();
+    
+    }
 }
