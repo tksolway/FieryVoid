@@ -461,11 +461,16 @@ window.shipManager = {
 
     getShipPositionForDrawing: function(ship){
         var movement = null;
+        
+        if(ship.movement.length > 0){
+            movement = ship.movement[0];
+        }
+        
         for (var i in ship.movement){
-            if (ship.movement[i].commit == false)
+            if (ship.movement[i].commit === false)
                 break;
 
-            if(gamedata.gamephase == 3 && !animation.gravMovesAnimated && ship.movement[i].type.charAt(0)=='g'){
+            if(gamedata.gamephase === 3 && !animation.gravMovesAnimated && ship.movement[i].type.charAt(0)=='g'){
                 continue;
             }
             

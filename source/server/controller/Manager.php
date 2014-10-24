@@ -418,15 +418,23 @@ class Manager{
     
     private static function handleWeaponBasedMovement($ships, $gamedata){
         // To allow for the ID of the ballistics fireOrders to be updated in $servergamedata
+        Debug::log("1");
         $servergamedata = self::$dbManager->getTacGamedata($gamedata->forPlayer, $gamedata->id);
+        Debug::log("2");
         $updateShips = $servergamedata->ships;
+
+        Debug::log("3");
         
         if(self::$weaponBasedMoveHandler == null){
+        Debug::log("4");
             self::$weaponBasedMoveHandler = new WeaponBasedMovHandler($servergamedata);
         }
         
+        Debug::log("5");
         self::$weaponBasedMoveHandler->checkForFireOrders($updateShips);
-        self::$weaponBasedMoveHandler->handleWeaponBasedMovement($updateShips, $servergamedata);
+        Debug::log("6");
+        self::$weaponBasedMoveHandler->handleMovement($updateShips, $servergamedata);
+        Debug::log("7");
         
         // Now this is only to handle end of phase, as there are only 
         Debug::log("********** LENGTH OF UPDATED FIRE ORDERS: ".sizeof($servergamedata->getUpdatedFireOrders()));
@@ -678,21 +686,29 @@ class Manager{
         
         $servergamedata = self::$dbManager->getTacGamedata($gamedata->forPlayer, $gamedata->id);
         
-        $starttime = time();
+        //$starttime = time();
         Firing::automateIntercept($servergamedata);
-        $endtime = time();
-        Debug::log("AUTOMATE INTERCEPT - GAME: ".$gamedata->id." Time: " . ($endtime - $starttime) . " seconds.");
+        //$endtime = time();
+        //Debug::log("AUTOMATE INTERCEPT - GAME: ".$gamedata->id." Time: " . ($endtime - $starttime) . " seconds.");
         
-        $starttime = time();
+        //$starttime = time();
+
         Firing::fireWeapons($servergamedata);
-        $endtime = time();
-        Debug::log("RESOLVING FIRE - GAME: ".$gamedata->id." Time: " . ($endtime - $starttime) . " seconds.");
+
+        if(self::$weaponBasedMoveHandler == null){
+            self::$weaponBasedMoveHandler = new WeaponBasedMovHandler($servergamedata);
+        }
+
+        self::$weaponBasedMoveHandler->checkForFireOrders($servergamedata->ships);
+        self::$weaponBasedMoveHandler->handleDamage($servergamedata);
+        //$endtime = time();
+        //Debug::log("RESOLVING FIRE - GAME: ".$gamedata->id." Time: " . ($endtime - $starttime) . " seconds.");
         
         
         Criticals::setCriticals($servergamedata);
 		//var_dump($servergamedata->getNewFireOrders());
 		//throw new Exception();
-		self::$dbManager->submitFireorders($servergamedata->id, $servergamedata->getNewFireOrders(), $servergamedata->turn, 3);
+	self::$dbManager->submitFireorders($servergamedata->id, $servergamedata->getNewFireOrders(), $servergamedata->turn, 3);
         self::$dbManager->updateFireOrders($servergamedata->getUpdatedFireOrders());
         self::$dbManager->submitDamages($servergamedata->id, $servergamedata->turn, $servergamedata->getNewDamages());
         self::$dbManager->submitCriticals($servergamedata->id,  $servergamedata->getUpdatedCriticals(), $servergamedata->turn);
@@ -748,14 +764,10 @@ class Manager{
 
             self::$weaponBasedMoveHandler->checkForFireOrders($ships);
             
-                            Debug::log("Manager 3");
-
             if(self::$weaponBasedMoveHandler->isPhaseNeeded()){
-                                Debug::log("Manager 4");
 
                 self::startWeaponBasedMovement($gamedata);
             }else{
-                                Debug::log("Manager 5");
                 self::handleWeaponBasedMovement($ships, $gamedata);
                 self::startWeaponAllocation($gamedata);
             }

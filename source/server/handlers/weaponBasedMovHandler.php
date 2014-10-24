@@ -30,7 +30,7 @@ class WeaponBasedMovHandler{
                 }
             }
         }
-}
+    }
     
     private function addFireOrder($fireOrder){
         $this->fireOrders[] = $fireOrder;
@@ -43,9 +43,28 @@ class WeaponBasedMovHandler{
         return false;
     }
     
-    public function handleWeaponBasedMovement($ships, $tacGameData){
+    public function handleDamage($tacGameData){
+        $mineOrders = array();
+
+        foreach($this->fireOrders as $fireOrder){
+            $shooter = $tacGameData->getShipById($fireOrder->shooterid);
+            if($shooter->getSystemById($fireOrder->weaponid) instanceof GraviticMine){
+                $mineOrders[] = $fireOrder;
+            }
+        }
+
+        if((sizeof($mineOrders) > 0)){
+            $mineHandler = new GravMineHandler($mineOrders);
+            $mineHandler->doGravMineDamage($tacGameData);
+        }
+    }
+    
+    public function handleMovement($ships, $tacGameData){
+        Debug::log("a");
+        
         switch($tacGameData->phase){
             case 2:
+                Debug::log("b");
                 // Check for fire orders should already have been done.
                 //$this->checkForFireOrders($ships);
                 $mineOrders = array();
@@ -58,8 +77,11 @@ class WeaponBasedMovHandler{
                 }
 
                 if((sizeof($mineOrders) > 0)){
+        Debug::log("c");
                     $mineHandler = new GravMineHandler($mineOrders);
+        Debug::log("d");
                     $mineHandler->doGravMineMoves($tacGameData);
+        Debug::log("e");
                 }
                 break;
             
@@ -80,10 +102,109 @@ class GravMineHandler{
         $this->gravMineFireOrders = $mineFireOrders;
     }
     
+    public function doGravMineDamage($gamedata){
+        $affectedShips = $this->getAffectedShips($gamedata);
+        
+        // Now it is time to filter out the ones that are caught in a triangle
+        // of mines, or those that are exactly between two mines
+        foreach($affectedShips as $shipId=>$mineOrderArray){
+            $ship = $gamedata->getShipById($shipId);
+             
+            if(sizeof($mineOrderArray) == 1){
+                // Only caught in one blast. This one is staying in the array
+                continue;
+            }else if(sizeof($mineOrderArray) == 2){
+                // Caught by 2 blasts. Check if the ship might be directly
+                // in between them
+                if($this->isHexagonCrossed($ship, $mineOrderArray[0], $mineOrderArray[1])){
+                    // The ship doesn't move but gets damage. It's caught in the middle
+                    $this->damageShipFromMines($ship, $mineOrderArray, $gamedata);
+                }
+            }else{
+                $shipCo = $ship->getCoPos();
+                $pointsArray = array();
+                // Caught by 3 or more blasts.
+                foreach($mineOrderArray as $mineFireOrder){
+                    $mineOrderArrayPixel = Mathlib::hexCoToPixel($mineFireOrder->x, $mineFireOrder->y);
+                    $pointsArray[] = new Point($mineOrderArrayPixel["x"], $mineOrderArrayPixel["y"]);
+                }
+
+                $convexHull = new ConvexHull($pointsArray);
+                $surroundingPoints = $convexHull->getHullPoints();
+
+                $hexCorners = $this->getHexagonCornersPixel($shipCo["x"], $shipCo["y"]);
+                
+                foreach($hexCorners as $hexCorner){
+                    if($this->checkForPointInBlastArea($hexCorner, $surroundingPoints)){
+                        // Ship is in mine area
+                        $this->damageShipFromMines($ship, $mineOrderArray, $gamedata);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
     public function doGravMineMoves($gamedata){
+        Debug::log("f");
+        $affectedShips = $this->getAffectedShips($gamedata);
+        Debug::log("g");
+        
+        // Now it is time to filter out the ones that are caught in a triangle
+        // of mines, or those that are exactly between two mines
+        foreach($affectedShips as $shipId=>$mineOrderArray){
+            $ship = $gamedata->getShipById($shipId);
+             
+            if(sizeof($mineOrderArray) == 1){
+                // Only caught in one blast. This one is staying in the array
+                $this->moveShipToMine($ship, $mineOrderArray);
+                continue;
+            }else if(sizeof($mineOrderArray) == 2){
+                Debug::log("******* 2 gravmines *******");
+                // Caught by 2 blasts. Check if the ship might be directly
+                // in between them
+                if($this->isHexagonCrossed($ship, $mineOrderArray[0], $mineOrderArray[1])){
+                    // The ship doesn't move but gets damage. It's caught in the middle
+                    Debug::log("******* Caught between 2 gravmines *******");
+                    continue;
+                }else{
+                    Debug::log("******* Affected by 2 gravmines *******");
+                    // the ship moves.
+                    $this->moveShipToMine($ship, $mineOrderArray);
+                }
+            }else{
+                $shipCo = $ship->getCoPos();
+                $pointsArray = array();
+                // Caught by 3 or more blasts.
+                foreach($mineOrderArray as $mineFireOrder){
+                    $mineOrderArrayPixel = Mathlib::hexCoToPixel($mineFireOrder->x, $mineFireOrder->y);
+                    $pointsArray[] = new Point($mineOrderArrayPixel["x"], $mineOrderArrayPixel["y"]);
+                }
+
+                $convexHull = new ConvexHull($pointsArray);
+                $surroundingPoints = $convexHull->getHullPoints();
+
+                $hexCorners = $this->getHexagonCornersPixel($shipCo["x"], $shipCo["y"]);
+                
+                foreach($hexCorners as $hexCorner){
+                    if($this->checkForPointInBlastArea($hexCorner, $surroundingPoints)){
+                        // Ship is in mine area
+                        continue;
+                    }
+                }
+                
+                $this->moveShipToMine($ship, $mineOrderArray);
+            }
+        }
+    }
+    
+    // Create an array of ship ids with the grav mine fire orders that hit
+    // that particular ship id.
+    private function getAffectedShips($gamedata){
         $affectedShips = array();
         $shipsInBlast = array();
         
+        Debug::log("h");
         foreach($this->gravMineFireOrders as $gravMineFireOrder){
             $shooter = $gamedata->getShipById($gravMineFireOrder->shooterid);
             $gravMine = $shooter->getSystemById($gravMineFireOrder->weaponid);
@@ -116,62 +237,7 @@ class GravMineHandler{
             }
         }
         
-        if(sizeof($affectedShips) == 0){
-            // There were no ships caught in any mines
-            Debug::log("NO SHIPS ARE CAUGHT IN GRAV MINES");
-            return null;
-        }
-        
-        // There were ships caught in the mines.
-        // Now it is time to filter out the ones that are caught in a triangle
-        // of mines, or those that are exactly between two mines
-        foreach($affectedShips as $shipId=>$mineOrderArray){
-            $ship = $gamedata->getShipById($shipId);
-             
-            if(sizeof($mineOrderArray) == 1){
-                // Only caught in one blast. This one is staying in the array
-                Debug::log("SHIP IS CAUGHT IN 1 GRAV MINE");
-                $this->moveShipToMine($ship, $mineOrderArray);
-                continue;
-            }else if(sizeof($mineOrderArray) == 2){
-                // Caught by 2 blasts. Check if the ship might be directly
-                // in between them
-                Debug::log("SHIP IS CAUGHT IN 2 GRAV MINES");
-                
-                if($this->isHexagonCrossed($ship, $mineOrderArray[0], $mineOrderArray[1])){
-                    // The ship doesn't move but gets damage. It's caught in the middle
-                    Debug::log("SHIP IS BETWEEN 2 GRAV MINES");
-                }else{
-                    // the ship moves.
-                    Debug::log("SHIP IS MOVING TOWARDS 1 OF 2 GRAV MINES");
-                    $this->moveShipToMine($ship, $mineOrderArray);
-                }
-            }else{
-                $shipCo = $ship->getCoPos();
-                $pointsArray = array();
-                // Caught by 3 or more blasts.
-                foreach($mineOrderArray as $mineFireOrder){
-                    $mineOrderArrayPixel = Mathlib::hexCoToPixel($mineFireOrder->x, $mineFireOrder->y);
-                    $pointsArray[] = new Point($mineOrderArrayPixel["x"], $mineOrderArrayPixel["y"]);
-                }
-
-                $convexHull = new ConvexHull($pointsArray);
-                $surroundingPoints = $convexHull->getHullPoints();
-
-                $hexCorners = $this->getHexagonCornersPixel($shipCo["x"], $shipCo["y"]);
-                
-                foreach($hexCorners as $hexCorner){
-                    if($this->checkForPointInBlastArea($hexCorner, $surroundingPoints)){
-                        // Ship is in mine area
-                        Debug::log("SHIP IS CAUGHT IN 3+ GRAV MINES");
-                        return;
-                    }
-                }
-                
-                Debug::log("SHIP IS CAUGHT OUTSIDE 3+ GRAV MINES");
-                $this->moveShipToMine($ship, $mineOrderArray);
-            }
-        }
+        return $affectedShips;
     }
     
     // Method to check if a mine on that hex is already in the array.
@@ -214,39 +280,33 @@ class GravMineHandler{
             case -1:
                 // fighter unit
                 return $distance;
-                break;
             case 0:
                 // LCV
                 return 2*$distance;
-                break;
             case 1:
                 // MCV
                 return 3*$distance;
-                break;
             case 2:
                 // HCV
                 return 4*$distance;
-                break;
             case 3:
                 // Capital
                 return 5*$distance;
-                break;
             case 4:
                 // enormous non-base
                 return 6*$distance;
-                break;
             default:
                 return 0;
-                break;
         }
     }
     
     // Enters damage from the closest mine
-    private function damageShipFromMines($ship, $mineOrderArray){
+    private function damageShipFromMines($ship, $mineOrderArray, $gamedata){
         // First get closest
         $closestMineOrder = $this->getClosestMineCo($ship, $mineOrderArray);
         $mineCo = Mathlib::hexCoToPixel($closestMineOrder->x, $closestMineOrder->y);
         $distance = round(Mathlib::getDistanceHex($mineCo, $ship->getCoPos()));
+        $shooter = $gamedata->getShipById($closestMineOrder->shooterid);
         
         if($distance < 0 || $distance > 5){
             Debug::log("Strange distance in damageShipFromMines in weaponBasedMovHandler");
@@ -254,7 +314,10 @@ class GravMineHandler{
         }
         
         $damage = $this->getGravMineDamage($ship, $distance);
+        $weapon = $shooter->getSystemById($closestMineOrder->weaponid);
         
+
+            $weapon->damage($ship, $shooter, $closestMineOrder, $mineCo, $gamedata, $damage);
         
     }
     
@@ -332,7 +395,7 @@ class GravMineHandler{
             case 5:
                 if($newPos["y"]%2 == 0){
                     // the y-coordinate is even
-                    $newPos["x"] = $newPos["x"] - 1;
+                    $newPos["x"] = $newPos["x"] + 1;
                     $newPos["y"] = $newPos["y"] - 1;
                 }else{
                     $newPos["y"] = $newPos["y"] - 1;
@@ -510,12 +573,6 @@ class GravMineHandler{
         // return the valid intersection  
         return true;  
     }  
-    
-    public static function doGravMineDamage($ships){
-        $affectedShips = array();
-        
-        return $affectedShips;
-    }
 }
 
 class Point{

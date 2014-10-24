@@ -193,39 +193,58 @@
         }
 
         public function getShipsInBlast($gamedata, $fireOrder){
+            Debug::log("**** GravMine: getShipsInBlast ****");
             $pos = mathlib::hexCoToPixel($fireOrder->x, $fireOrder->y);
-            
+            Debug::log("fireOrder x: ",$fireOrder->x);
+            Debug::log("fireOrder y: ",$fireOrder->y);
+
             $this->calculateHit($gamedata, $fireOrder);
             
+            Debug::log("**** End: getShipsInBlast ****");
             return $gamedata->getShipsInDistance($pos, mathlib::$hexWidth*5+1);
         }
         
         public function fire($gamedata, $fireOrder){
-            $shooter = $gamedata->getShipById($fireOrder->shooterid);
-            $shooterpos = $shooter->getCoPos();
-            
-            $this->calculateHit($gamedata, $fireOrder);
-            $pos = mathlib::hexCoToPixel($fireOrder->x, $fireOrder->y);
-            $ships1 = $gamedata->getShipsInDistance($pos, 5);
-            $shipsAt0 = $gamedata->getShipsInDistance($pos);
-
-            foreach($ships1 as $ship){
-                $this->AOEdamage($ship, $shooter, $fireOrder, $shooterpos, 0, $gamedata);
-                $fireOrder->notes .= $ship->name ." in same hex. "; 
-            }
-
-
-            $ships2 = $gamedata->getShipsInDistance($pos, mathlib::$hexWidth+1);
-
-            foreach($ships2 as $ship){
-                if (isset($ships1[$ship->id]))
-                    continue;
-
-                $fireOrder->notes .= $ship->name ." in adjacent hex. "; 
-                $this->AOEdamage($ship, $shooter, $fireOrder, $pos, 0, $gamedata);
-             }
+            // All the relevant damage dealing has already been done
+            // by the GravMineHandler.
+            return;
         }
         
+        protected function getSystemArmour($system, $gamedata, $fireOrder){
+            // grav mines ignore armor
+            return 0;
+	}
+
+        public function damage($ship, $shooter, $fireOrder, $pos, $gamedata, $damage, $location = null){
+
+             if($ship instanceof FighterFlight){
+                foreach ($ship->systems as $fighter){
+
+                    if ($fighter == null || $fighter->isDestroyed()){
+                            continue;
+                    }
+
+                    $this->doDamage($ship, $shooter, $fighter, $damage, $fireOrder, $pos, $gamedata);
+                }
+            }else{
+                $system = $ship->getHitSystem($pos, $shooter, $fireOrder, $this);
+
+                if ($system == null){
+                Debug::log("**** No system found for gravmine damage ****");
+
+
+                        return;
+                }
+
+                Debug::log("*****************************************");
+                Debug::log("Doing damage on system: ".$system->displayName);
+                Debug::log("Amount of damage: ".$damage);
+                Debug::log("*****************************************");
+
+                $this->doDamage($ship, $shooter, $system, $damage, $fireOrder, $pos, $gamedata);
+            }
+        }
+       
         public function firesInPhase($phase) {
             switch($phase){
                 case 3:
