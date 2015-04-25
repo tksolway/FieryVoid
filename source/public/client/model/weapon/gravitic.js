@@ -24,16 +24,16 @@ GravitonPulsar.prototype.initBoostableInfo = function(){
 
     switch(shipManager.power.getBoost(this)){
         case 0:
-            this.data["Pulses"] = '1-2';
+            this.data["Pulses"] = 'D2';
             break;
         case 1:
-            this.data["Pulses"] = '1-3';
+            this.data["Pulses"] = 'D3 +1';
             break;
         case 2:
-            this.data["Pulses"] = '1-3';
+            this.data["Pulses"] = 'D3 +2';
             break;
         default:
-            this.data["Pulses"] = '1-2';
+            this.data["Pulses"] = 'D2';
             break;
     }            
 
@@ -49,8 +49,16 @@ GravitonPulsar.prototype.initBoostableInfo = function(){
             shipManager.power.unsetBoost(null, this);
         }
     }
-    
+
+    this.intercept = this.getInterceptRating();
+    this.data.Intercept = this.getInterceptRating()*(-5);
+
     return this;
+}
+
+GravitonPulsar.prototype.getInterceptRating = function()
+{
+    return (1 + shipManager.power.getBoost(this));
 }
 
 GravitonPulsar.prototype.clearBoost = function(){
@@ -104,7 +112,43 @@ GraviticBolt.prototype.initBoostableInfo = function(){
             break;
     }            
     
+    if(window.weaponManager.isLoaded(this)){
+        this.loadingtime = 1 + shipManager.power.getBoost(this);
+        this.turnsloaded = 1 + shipManager.power.getBoost(this);
+        this.normalload =  1 + shipManager.power.getBoost(this);
+    }
+    else{
+        var count = shipManager.power.getBoost(this);
+        
+        for(var i = 0; i < count; i++){
+            shipManager.power.unsetBoost(null, this);
+        }
+    }
+    
+    this.intercept = this.getInterceptRating();
+    this.data.Intercept = this.getInterceptRating()*(-5);
+
     return this;
+}
+
+GraviticBolt.prototype.getInterceptRating = function()
+{
+    return (1 + shipManager.power.getBoost(this));
+}
+
+
+GraviticBolt.prototype.clearBoost = function(){
+        for (var i in system.power){
+                var power = system.power[i];
+                if (power.turn != gamedata.turn)
+                        continue;
+
+                if (power.type == 2){
+                    system.power.splice(i, 1);
+
+                    return;
+                }
+        }
 }
 
 GraviticBolt.prototype.hasMaxBoost = function(){

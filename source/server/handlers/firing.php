@@ -15,11 +15,18 @@
             
             foreach ($this->intercepts as $candidate){
                 $fire = $candidate->fire;
-                $shooter = $gd->getShipById($fire->shooterid);
+
                 $target = $gd->getShipById($fire->targetid);
-                $firingweapon = $shooter->getSystemById($fire->weaponid);
-                            
+
+                if ( $target->isDisabled() ){
+                    continue;
+                }
                 
+
+                $shooter = $gd->getShipById($fire->shooterid);
+
+                $firingweapon = $shooter->getSystemById($fire->weaponid);
+                                            
                 $damage = $firingweapon->getAvgDamage() * ceil($fire->shots/2);
                 //$hitChance = $firingweapon->calculateHit($gd, $fire);
                 $numInter = $firingweapon->getNumberOfIntercepts($gd, $fire);
@@ -102,13 +109,32 @@ class Firing{
         
         foreach($ship->systems as $fighter)
         {
-            if ($fighter->isDestroyed())
+            $exclusiveWasFired = false;
+            
+            if ($fighter->isDestroyed()){
                 continue;
+            }
+            
+            // check if fighter is firing weapons that exclude other
+            // weapons from firing. (Like IonBolt on a Rutarian.)
+            foreach ($fighter->systems as $weapon){
+                if($weapon instanceof Weapon){
+                    if($weapon->exclusive && $weapon->firedOnTurn($gd->turn)){
+                        $exclusiveWasFired = true;
+                        break;
+                    }
+                }
+            }
+            
+            if($exclusiveWasFired){
+                continue;
+            }
             
             foreach ($fighter->systems as $weapon)
             {
-            if (self::isValidInterceptor($gd, $weapon) === false)
-                continue;
+                if (self::isValidInterceptor($gd, $weapon) === false){
+                    continue;
+                }
 
                 $possibleIntercepts = self::getPossibleIntercept($gd, $ship, $weapon, $gd->turn);
                 $intercepts[] = new Intercept($ship, $weapon, $possibleIntercepts);
@@ -306,17 +332,44 @@ class Firing{
     
     
     public static function fireWeapons($gamedata){
+
+
+        $ordered = array();
+        $unordered  = array();
+
         
         foreach ($gamedata->ships as $ship){
             if ($ship instanceof FighterFlight){
                 continue;
             }
-                
-	    //FIRE all ships
+
             foreach($ship->getAllFireOrders() as $fire){
-                self::fire($ship, $fire, $gamedata);
+                $unordered[] = $fire;
+            }
+        }       
+
+        for ($i = 1; $i < 10; $i++){
+            foreach($unordered as $fire){
+
+            $ship = $gamedata->getShipById($fire->shooterid);
+            $wpn = $ship->getSystemById($fire->weaponid);
+            $p = $wpn->priority;
+
+            if ($p == $i){
+                $ordered[] = $fire;
+                }                        
             }
         }
+
+        foreach ($ordered as $fire){
+            $ship = $gamedata->getShipById($fire->shooterid);
+            $wpn = $ship->getSystemById($fire->weaponid);
+            $p = $wpn->priority;
+       //     debug::log("resolve --- Ship: ".$ship->shipClass.", id: ".$fire->shooterid." wpn: ".$wpn->displayName.", priority: ".$p);
+            self::fire($ship, $fire, $gamedata);
+        }
+
+
 
         // From here on, only fighter units are left.
         $chosenfires = array();

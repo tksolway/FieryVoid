@@ -26,28 +26,35 @@ shipManager.systems = {
 	
 	isDestroyed: function(ship, system){
         
-        return system.destroyed;
+        if(system.parentId > 0){
+            var parentSystem = system;
+            
+            while(parentSystem.parentId > 0){
+                parentSystem = shipManager.systems.getSystem(ship, parentSystem.parentId);
+            }
+            
+            return parentSystem.destroyed;
+        }
         
-
-        /*
-        var d = damageManager.getDamage(ship, system);
-        var stru = shipManager.systems.getStructureSystem(ship, system.location);
-        if (stru && stru != system && shipManager.systems.isDestroyed(ship, stru))
-            return true;
-            
-        if (system.fighter && shipManager.criticals.hasCritical(system, "DisengagedFighter"))
-			return true;
-            
-            
-        return (d >= system.maxhealth);
-        */
+        return system.destroyed;
     },
     
     isEngineDestroyed: function(ship){
-		if (ship.flight)
-			return false;
+	if (ship.flight)
+            return false;
 		
-        return shipManager.systems.isDestroyed(ship, shipManager.systems.getSystemByName(ship, "engine"));
+        // Check all engines, as Dilgar have two of them.
+        for (var i in ship.systems){
+            var system = ship.systems[i];
+            if (system.name == "engine"){
+                if(!shipManager.systems.isDestroyed(ship, system)){
+                    // At least one of the engines is still alive
+                    return false;
+                }
+            }
+        }
+        
+        return true;
     },
     
     isReactorDestroyed: function(ship){
@@ -100,6 +107,11 @@ shipManager.systems = {
     
     getSystem: function(ship, id){
     
+        if(ship == null){
+            console.log("That's weird");
+            return null;
+        }
+        
         for(var i in ship.systems){
             var system = ship.systems[i];
             
@@ -183,9 +195,8 @@ shipManager.systems = {
             cnt++;
         }
         
-        if(system.missileArray!= null && cnt > 0){
-            system.range = system.missileArray[system.firingMode].range;
-            system.damage = system.missileArray[system.firingMode].damage;
+        if(system.missileArray!== null && cnt > 0){
+            system.range = system.missileArray[system.firingMode].range + system.rangeMod;
         }
 
         return system;
@@ -216,7 +227,6 @@ shipManager.systems = {
     
     getArcs: function (ship, weapon){
         
-//        if (shipManager.movement.isRolled(ship) && (weapon.location == 3 || weapon.location == 4)) {
         if (shipManager.movement.isRolled(ship)) {
             return {start: mathlib.addToDirection(weapon.endArc, (weapon.endArc*-2)), end: mathlib.addToDirection(weapon.startArc, (weapon.startArc*-2))}
         }else{
@@ -348,20 +358,35 @@ shipManager.systems = {
         return grouped;
         
     },
-	
-	getThrusters: function(ship, direction){
-		var list = Array();
-		for (var i in ship.systems){
-			var system = ship.systems[i];
-			
-			if (system.name == "thruster" && system.direction == direction)
-				list.push(system);
-			
-		}
+
+    getMisc: function(ship){
+        var tc = ship.turncost;
+        var td = ship.turndelaycost;
+        
+        return "static TurnCost: " + tc + " TurnDelay: " + td;
+    },
+	  
+    getFlightArmour: function(ship, system){
+        var front = ship.systems[1].armour[0];
+        var aft = ship.systems[1].armour[1];
+        var side = ship.systems[1].armour[2];
+        
+        var armour = "Armor (F/S/A): " + front + " / " + side + " / " + aft;
+        
+        return armour;
+    },
 		
-		return list;
-	
-	}
+    getThrusters: function(ship, direction){
+        var list = Array();
+        for (var i in ship.systems){
+            var system = ship.systems[i];
+            
+            if (system.name == "thruster" && system.direction == direction)
+                list.push(system);
+            }
+		
+	return list;
+    }
     
 
 }

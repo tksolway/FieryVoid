@@ -12,8 +12,13 @@ class MissileLauncher extends Weapon
     public $animationWidth = 4;
     public $trailLength = 100;
     public $distanceRange = 0;
+    public $firingMode = 1;
+    public $rangeMod = 0;
+    public $priority = 6;
+    protected $distanceRangeMod = 0;
     
     public $firingModes = array(
+        1 => "B"
     );
     
     public $missileArray = array();
@@ -21,6 +26,10 @@ class MissileLauncher extends Weapon
     function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc)
     {
         parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
+        $MissileB = new MissileB($startArc, $endArc, $this->fireControl);
+        $this->missileArray = array(
+            1 => $MissileB
+        );
     }
 
     public function setSystemDataWindow($turn)
@@ -51,6 +60,11 @@ class MissileLauncher extends Weapon
             $this->missileArray[$firingMode]->amount = $amount;
         }
     }
+    
+    protected function getAmmo($fireOrder)
+    {
+        return $this->missileArray[$fireOrder->firingMode];
+    }
 }
 
 class SMissileRack extends MissileLauncher
@@ -68,9 +82,31 @@ class SMissileRack extends MissileLauncher
         parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
 
     }
-    protected function getAmmo($fireOrder)
+    
+    public function getDamage($fireOrder)
     {
-        return null;
+//        $ammo = new $this->firingModes[$fireOrder->firingMode];
+//        return $ammo->getDamage();
+        return 20;
+    }
+    public function setMinDamage(){     $this->minDamage = 20 - $this->dp;}
+    public function setMaxDamage(){     $this->maxDamage = 20 - $this->dp;}     
+}
+
+class SoMissileRack extends MissileLauncher
+{
+    public $name = "soMissileRack";
+    public $displayName = "Class-SO Missile Rack";
+    public $range = 20;
+    public $distanceRange = 60;
+    public $loadingtime = 2;
+    public $iconPath = "missile1.png";
+
+    public $fireControl = array(2, 2, 2); // fighters, <mediums, <capitals 
+
+    function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
+        parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
+
     }
     
     public function getDamage($fireOrder)
@@ -83,7 +119,6 @@ class SMissileRack extends MissileLauncher
     public function setMaxDamage(){     $this->maxDamage = 20 - $this->dp;}     
 }
 
-
 class LMissileRack extends MissileLauncher
 {
     public $name = "lMissileRack";
@@ -92,16 +127,14 @@ class LMissileRack extends MissileLauncher
     public $distanceRange = 70;
     public $loadingtime = 2;
     public $iconPath = "missile1.png";
+    public $rangeMod = 10;
+    protected $distanceRangeMod = 10;
 
     public $fireControl = array(3, 3, 3); // fighters, <mediums, <capitals 
 
     function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
         parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
 
-    }
-    protected function getAmmo($fireOrder)
-    {
-        return null;
     }
     
     public function getDamage($fireOrder)
@@ -122,16 +155,14 @@ class LHMissileRack extends MissileLauncher
     public $distanceRange = 70;
     public $loadingtime = 1;
     public $iconPath = "missile2.png";
+    public $rangeMod = 10;
+    protected $distanceRangeMod = 10;
     
     public $fireControl = array(4, 4, 4); // fighters, <mediums, <capitals 
     
     function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
         parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
 
-    }
-    protected function getAmmo($fireOrder)
-    {
-        return null;
     }
     
     public function getDamage($fireOrder)
@@ -169,8 +200,10 @@ class FighterMissileRack extends MissileLauncher
     function __construct($maxAmount, $startArc, $endArc){
         parent::__construct(0, 0, 0, $startArc, $endArc);
 
+        $MissileFB = new MissileFB($startArc, $endArc, $this->fireControl);
+        
         $this->missileArray = array(
-            1 => new MissileFB($startArc, $endArc)
+            1 => $MissileFB
         );
         
         $this->maxAmount = $maxAmount;
@@ -194,13 +227,11 @@ class FighterMissileRack extends MissileLauncher
     
     public function setId($id){
         
-        debug::log("Set ID");
         parent::setId($id);
         
         $counter = 0;
         
         foreach ($this->missileArray as $missile){
-            debug::log("Set ID missile, $counter");
             $missile->setId(1000 + ($id*10) + $counter);
             $counter++;
         } 
@@ -235,10 +266,10 @@ class FighterMissileRack extends MissileLauncher
         return true;
     }
 
-    protected function getAmmo($fireOrder)
-    {
-        return new $this->missileArray[$fireOrder->firingMode];
-    }
+//    protected function getAmmo($fireOrder)
+//    {
+//        return new $this->missileArray[$fireOrder->firingMode];
+//    }
     
     public function addAmmo($missileClass, $amount){
         foreach($this->missileArray as $missile){
@@ -296,8 +327,10 @@ class FighterTorpedoLauncher extends FighterMissileRack
     function __construct($maxAmount, $startArc, $endArc){
         parent::__construct($maxAmount, $startArc, $endArc);
         
+        $LBTorp = new LightBallisticTorpedo($startArc, $endArc, $this->fireControl);
+        
         $this->missileArray = array(
-            1 => new LightBallisticTorpedo($startArc, $endArc)
+            1 => $LBTorp
         );
         
         $this->maxAmount = $maxAmount;
@@ -354,13 +387,19 @@ class BombRack extends MissileLauncher{
         1 => "B"
     );
     
-    public $fireControl = array(1, 2, 3); // fighters, <mediums, <capitals 
+    //public $fireControl = array(1, 2, 3); // fighters, <mediums, <capitals 
+    // For FV, the only option for a bomb rack is to load it with missiles.
+    // In that case, it behaves exactly like a SMissile-rack, including
+    // the FC.
+    public $fireControl = array(3, 3, 3); // fighters, <mediums, <capitals 
     
     function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
         parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
 
+        $MissileB = new MissileB($startArc, $endArc, $this->fireControl);
+        
         $this->missileArray = array(
-            1 => new MissileB($startArc, $endArc)
+            1 => $MissileB
         );
     }
     
@@ -380,10 +419,10 @@ class BombRack extends MissileLauncher{
         $ammo->calculateHit($gamedata, $fireOrder);
     }
     
-    protected function getAmmo($fireOrder)
-    {
-        return new $this->missileArray[$fireOrder->firingMode];
-    }
+//    protected function getAmmo($fireOrder)
+//    {
+//        return new $this->missileArray[$fireOrder->firingMode];
+//    }
 
     public function addAmmo($missileClass, $amount){
         foreach($this->missileArray as $missile){

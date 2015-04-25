@@ -52,7 +52,11 @@
             if($this->faction == "Centauri"){
                 return $this->doCentauriInitiativeBonus($gamedata);
             }
-            
+
+            if($this->faction == "Yolu"){
+                return $this->doYoluInitiativeBonus($gamedata);
+            }
+
             return $this->iniativebonus;
         }
         
@@ -63,16 +67,27 @@
                         && ($this->userid == $ship->userid)
                         && ($ship instanceof PrimusMaximus)
                         && ($this != $ship)){
-                    debug::log("Extra ini for $this->name");
                     return ($this->iniativebonus+5);
                 }
             }
 
-            debug::log("No ini bonus for $this->name");
-            
             return $this->iniativebonus;
         }
-        
+
+        private function doYoluInitiativeBonus($gamedata){
+            foreach($gamedata->ships as $ship){
+                if(!$ship->isDestroyed()
+                    && ($ship->faction == "Yolu")
+                    && ($this->userid == $ship->userid)
+                    && ($ship instanceof Udran)
+                    && ($this != $ship)){
+                    return ($this->iniativebonus+5);
+                }
+            }
+
+            return $this->iniativebonus;
+        }
+
         public function setEW($ew)
         {
             $this->EW[] = $ew;
@@ -234,13 +249,21 @@
                         foreach($system->weapons as $weapon){
                             if($weapon->id == $id){
                                 return $weapon;
+                            }else{
+                                if($weapon->duoWeapon){
+                                    foreach($weapon->weapons as $subweapon){
+                                        if($subweapon->id == $id){
+                                            return $subweapon;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
             
-            return null;
+        return null;
         }
         
         public function getSystemByName($name){
@@ -313,7 +336,7 @@
                 return false;
 
             //if the system has arcs, check that the position is on arc
-            if($system->startArc && $system->endArc){
+            if(is_int($system->startArc) && is_int($system->endArc)){
 
                 $tf = $this->getFacingAngle();
 
@@ -868,6 +891,9 @@
     }
     
     class BaseShipNoAft extends BaseShip{
+
+        public $draziCap = true;
+
         function __construct($id, $userid, $name, $slot){
             parent::__construct($id, $userid, $name,$slot);
         }
@@ -917,6 +943,7 @@
 
     class HeavyCombatVesselLeftRight extends BaseShip{
     
+        public $draziHCV = true;
         public $shipSizeClass = 2;
         
         function __construct($id, $userid, $name, $slot){

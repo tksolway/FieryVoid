@@ -7,7 +7,15 @@ window.combatLog = {
     logDestroyedShip: function(ship){
     
         var html = '<div class="logentry"><span class="destroyed">';
+        
+        // When the name is only a number, it might not be interpreted as a string.
+        // In that case, the toUpperCase goes wrong.
+        // Make certain the name is a string.
+        if(typeof ship.name == 'string' || ship.name instanceof String){
             html += '<span class="shiplink" data-id="'+ship.id+'" >' + ship.name.toUpperCase() + '</span> DESTROYED</span>';
+        }else{
+            html += '<span class="shiplink" data-id="'+ship.id+'" >' + ship.name + '</span> DESTROYED</span>';
+        }
             
         $(html).prependTo("#log");
     },
@@ -25,8 +33,7 @@ window.combatLog = {
         var highC = 0;
         var notes = "";
         
-        for (var a in orders){
-            
+        for (var a in orders){            
                         
             count++;
             var fire = orders[a];

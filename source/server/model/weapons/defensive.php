@@ -38,7 +38,12 @@
         }
         
         public function getDefensiveHitChangeMod($target, $shooter, $pos, $turn){
-            return $this->getOutput();
+            if($this->isDestroyed($turn-1) || $this->isOfflineOnTurn($turn))
+                return 0;
+
+            $output = $this->output;
+            $output -= $this->outputMod;
+            return $output;
         }
 
         public function getDefensiveDamageMod($target, $shooter, $pos, $turn){
@@ -47,6 +52,7 @@
         
         public function setSystemDataWindow($turn){
             $this->data["DEFENSIVE BONUS:"] = "-15 to hit on arc";
+            parent::setSystemDataWindow($turn);
         }
 
         function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
@@ -70,7 +76,12 @@
         public $intercept = 4;
         
         public function getDefensiveHitChangeMod($target, $shooter, $pos, $turn){
-            return $this->getOutput();
+            if($this->isDestroyed($turn-1) || $this->isOfflineOnTurn($turn))
+                return 0;
+
+            $output = $this->output;
+            $output -= $this->outputMod;
+            return $output;
         }
 
         public function getDefensiveDamageMod($target, $shooter, $pos, $turn){
@@ -79,6 +90,7 @@
         
         public function setSystemDataWindow($turn){
             $this->data["DEFENSIVE BONUS:"] = "-20 to hit on arc";
+            parent::setSystemDataWindow($turn);
         }
     }
     
@@ -91,7 +103,12 @@
         public $intercept = 2;
         
         public function getDefensiveHitChangeMod($target, $shooter, $pos, $turn){
-            return $this->getOutput();
+            if($this->isDestroyed($turn-1) || $this->isOfflineOnTurn($turn))
+                return 0;
+
+            $output = $this->output;
+            $output -= $this->outputMod;
+            return $output;
         }
 
         public function getDefensiveDamageMod($target, $shooter, $pos, $turn){
@@ -100,6 +117,7 @@
         
         public function setSystemDataWindow($turn){
             $this->data["DEFENSIVE BONUS:"] = "-10 to hit on arc";
+            parent::setSystemDataWindow($turn);
         }
 
         public function getDamage($fireOrder){        return Dice::d(10)+3;   }
@@ -118,6 +136,7 @@
         public $animationExplosionScale = 0.15;
 
         public $animationWidth = 1;
+        public $animationWidth2 = 0;
             
         public $intercept = 3;
              

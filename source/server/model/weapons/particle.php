@@ -16,6 +16,7 @@
             parent::setSystemDataWindow($turn);
         }
 
+        public $priority = 7;
 
 
     }
@@ -127,7 +128,6 @@
 
         public $intercept = 2;
 
-
         public $loadingtime = 1;
         public $guns = 2;
 
@@ -193,6 +193,7 @@
 
         public $intercept = 1;
         public $loadingtime = 2;
+        public $priority = 3;
 
         public $rangePenalty = 0.5;
         public $fireControl = array(2, 4, 5); // fighters, <mediums, <capitals
@@ -229,6 +230,7 @@
 
         public $intercept = 2;
         public $loadingtime = 2;
+        public $priority = 3;
 
         public $rangePenalty = 1;
         public $fireControl = array(0, 2, 4); // fighters, <mediums, <capitals
@@ -262,6 +264,7 @@
         public $animationWidth = 7;
         public $trailLength = 2400;
         public $damageType = "raking";
+        public $priority = 4;
 
         public $loadingtime = 6;
 
@@ -300,10 +303,12 @@
         public $firingModes = array( 1 => "Sustained");
         
         // Set to make the weapon start already overloaded.
+        public $alwaysoverloading = true;
         public $overloadturns = 2;
         public $extraoverloadshots = 2;
         public $overloadshots = 2;
         public $loadingtime = 2;
+        public $priority = 3;
 
         public $rangePenalty = 0.5;
         public $fireControl = array(2, 3, 4); // fighters, <mediums, <capitals
@@ -315,6 +320,7 @@
         public function setSystemDataWindow($turn){
             $this->data["Weapon type"] = "Particle";
             $this->data["Damage type"] = "Raking";
+            $this->data["REMARK"] = "This weapon is always in<br>sustained mode.";
 
             parent::setSystemDataWindow($turn);
         }
@@ -396,11 +402,11 @@
             }
         }
         
-        public function getIntercept($gamedata, $fireOrder){
-            $this->intercept = $this->getInterceptRating($gamedata->turn);
-            
-            parent::getIntercept($gamedata, $fireOrder);
-        }
+//        public function getIntercept($gamedata, $fireOrder){
+//            $this->intercept = $this->getInterceptRating($gamedata->turn);
+//            
+//            parent::getIntercept($gamedata, $fireOrder);
+//        }
 
         public function fire($gamedata, $fireOrder){
             $this->setTimes();
@@ -478,7 +484,7 @@
             return 1 + $this->getBoostLevel($turn);
         }
 
-        protected function getInterceptRating($turn){
+        public function getInterceptRating($turn){
             return 1 + $this->getBoostLevel($turn);            
         }
 
@@ -598,16 +604,16 @@
 
     class SolarCannon extends Particle{
 
-        public $trailColor = array(30, 170, 255);
 
         public $name = "solarCannon";
         public $displayName = "Solar Cannon";
-        public $animation = "trail";
-        public $animationColor = array(30, 170, 255);
-        public $animationExplosionScale = 0.35;
-        public $projectilespeed = 17;
-        public $animationWidth = 6;
-        public $trailLength = 20;
+        public $animation = "beam";
+        public $animationColor = array(0, 250, 0);
+        public $animationExplosionScale = 0.45;
+        public $projectilespeed = 15;
+        public $animationWidth = 8;
+        public $trailLength = 14;
+        public $priority = 8;
 
         public $loadingtime = 3;
 
@@ -790,6 +796,7 @@
         public $projectilespeed = 12;
         public $animationWidth = 6;
         public $trailLength = 6;
+        public $priority = 8;
 
         public $loadingtime = 3;
 
@@ -817,6 +824,7 @@
         public $projectilespeed = 14;
         public $animationWidth = 4;
         public $trailLength = 4;
+        public $priority = 8;
 
         public $loadingtime = 2;
 
@@ -845,6 +853,7 @@
         public $projectilespeed = 16;
         public $animationWidth = 3;
         public $trailLength = 3;
+        public $priority = 5;
 
         public $loadingtime = 1;
 
@@ -862,5 +871,34 @@
         public function setMinDamage(){     $this->minDamage = 12 - $this->dp;      }
         public function setMaxDamage(){     $this->maxDamage = 12 - $this->dp;      }
     }
+    
+    class LightParticleBeamShip extends StdParticleBeam{
+
+        public $trailColor = array(30, 170, 255);
+
+        public $name = "lightParticleBeamShip";
+        public $displayName = "Light Particle Beam";
+        public $animation = "beam";
+        public $animationColor = array(255, 250, 230);
+        public $animationExplosionScale = 0.12;
+        public $projectilespeed = 10;
+        public $animationWidth = 3;
+        public $trailLength = 8;
+
+        public $intercept = 2;
+        public $loadingtime = 1;
+
+        public $rangePenalty = 2;
+        public $fireControl = array(3, 3, 3); // fighters, <mediums, <capitals
+
+        function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
+            parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
+        }
+
+        public function getDamage($fireOrder){        return Dice::d(10)+4;   }
+        public function setMinDamage(){     $this->minDamage = 5 - $this->dp;      }
+        public function setMaxDamage(){     $this->maxDamage = 14 - $this->dp;      }
+    }
+
 ?>
 

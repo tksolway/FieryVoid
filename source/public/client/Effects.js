@@ -80,6 +80,7 @@ window.effects = {
             effects.addBigExplosion(pos, weapon);
         if (type == "AoE")
             effects.addAoEExplosion(pos, weapon);
+            
     },
     
     addAoEExplosion: function(pos, weapon){
@@ -96,7 +97,7 @@ window.effects = {
             size:r,
             startsize:1,
             speed:speed,
-            dissappear:Math.floor(2*Math.random()+7),
+            dissappear:Math.floor(2*Math.random()+17),
             green:0,
             pos:pos,
             draw:function(self){
@@ -161,17 +162,20 @@ window.effects = {
                 var a = getAlpha();
                 var pos = self.pos;
                 
-                canvas.fillStyle = "rgba(250,"+(230+self.green)+",80,"+0.1*a+")";
+                canvas.fillStyle = "rgba(255,"+(75+self.green)+",0,"+0.1*a+")";
                 graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size, 0);
-                graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.7, 0);
-                canvas.fillStyle = "rgba(240,"+(155+self.green)+",12,"+0.1*a+")";
+                canvas.fillStyle = "rgba(255,"+(50+self.green)+",0,"+0.1*a+")";
+				graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.6, 0);
+                canvas.fillStyle = "rgba(255,"+(100+self.green)+",0,"+0.1*a+")";
                 graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.5, 0);
-                canvas.fillStyle = "rgba(255,"+(255+self.green)+",170,"+0.1*a+")";
-                graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.4, 0);
                 graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.3, 0);
+                canvas.fillStyle = "rgba(255,"+(200+self.green)+",0,"+0.1*a+")";
+                graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.3, 0);
+                canvas.fillStyle = "rgba(255,"+(150+self.green)+",0,"+0.5*a+")";
+                graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.3, 0);
+                canvas.fillStyle = "rgba(255,255,255,"+8*a+")";
                 graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.2, 0);
-                canvas.fillStyle = "rgba(255,255,255,"+0.8*a+")";
-                graphics.drawCircleNoStroke(canvas, pos.x, pos.y, size*0.1, 0);
+
                 self.tics++;
                 
                 function getSize(){
@@ -211,8 +215,12 @@ window.effects = {
         
     displayAllWeaponFire: function(callback){
         effects.callback = callback;
-        effects.doDisplayAllWeaponFire();
-    },
+
+        setTimeout(function(){
+            effects.doDisplayAllWeaponFire();
+
+        }, 100);
+            },
     
     doDisplayAllWeaponFire: function(){
         var windows = $(".shipwindow:visible").hide();
@@ -229,41 +237,57 @@ window.effects = {
                 ship.dontDraw = false;
                 ship.destructionAnimated = false;
             }
-        
         }
-            
-        for (var i in gamedata.ships){
-            var ship = gamedata.ships[i];
+
+
+        var fo = [];
+
+        for (var x in gamedata.ships){
+            var ship = gamedata.ships[x];
             
             var fires = weaponManager.getAllFireOrders(ship);
+            for (var y in fires){                
+                var weapon = shipManager.systems.getSystem(ship, fires[y].weaponid);
+                fires[y].priority = weapon.priority;
+                fo.push(fires[y]);
+            }   
+        }
             
-            for (var a in fires){
-                var fire = fires[a];
-                
+        fo.sort(function(obj1, obj2){
+            if(obj1.targetid !== obj2.targetid){
+                 return obj1.targetid-obj2.targetid;
+            }
+            else {
+                return obj1.priority-obj2.priority; 
+            }
+        });
+
+//        console.log(fo);
+
+
+            for (var z in fo){
+                var fire = fo[z];
+
                 if (fire.turn != gamedata.turn || fire.type=='intercept' || !fire.rolled)
                     continue;
                 
                 if (fire.animated){
-                    
-                }else{
-                    if (fire.targetid != -1){
-                        var target = gamedata.getShip(fire.targetid);
-                        scrolling.scrollToShip(target);
-                    }else{
-                        scrolling.scrollToPos({x:fire.x, y:fire.y});
-                    }
-                
+                }
+
+                else{
+               
                     fire.animated = true;
                     var fires = Array();
                     fires.push(fire);
-                    
-                    var weapon = shipManager.systems.getSystem(ship, fire.weaponid);
+
+                    var shooter = gamedata.getShip(fire.shooterid);                    
+                    var weapon = shipManager.systems.getSystem(shooter, fire.weaponid);
                     weapon = weaponManager.getFiringWeapon(weapon, fire);
                     
-                    var otherFires = weaponManager.getAllFireOrders(ship);
+                    var otherFires = weaponManager.getAllFireOrders(shooter);
                     for (var b in otherFires){
                         var otherFire = otherFires[b];
-                        var weapon2 = shipManager.systems.getSystem(ship, otherFire.weaponid);
+                        var weapon2 = shipManager.systems.getSystem(shooter, otherFire.weaponid);
                         weapon2 = weaponManager.getFiringWeapon(weapon2, otherFire);
                         
                         if (otherFire.rolled && weapon2.name == weapon.name && !otherFire.animated && otherFire.turn == gamedata.turn){
@@ -274,22 +298,16 @@ window.effects = {
                                     fires.push(otherFire);
                                 }
                             }
-                        }
-                        
+                        }                        
                     }
+                   //     console.log(fires);
+                    effects.displayWeaponFire(fires, effects.doDisplayAllWeaponFire);
                     
                     combatLog.logFireOrders(fires);
-                    effects.displayWeaponFire(fires, effects.doDisplayAllWeaponFire);
-                    //infowindow.informFire(4000, fire, function(){effects.displayWeaponFire(fire);},effects.doDisplayAllWeaponFire);
-                    
-                    
-                    
+                                        //infowindow.informFire(4000, fire, function(){effects.displayWeaponFire(fire);},effects.doDisplayAllWeaponFire);
                     return;
                 }
             }
-            
-            
-        }
         
         for (var i in gamedata.ships){
             ship = gamedata.ships[i];
@@ -330,7 +348,7 @@ window.effects = {
                     tPos ={x:self.pos.x + Math.floor((Math.random()*self.variance-(self.variance/2)))*gamedata.zoom, 
                     y:self.pos.y + Math.floor((Math.random()*self.variance-(self.variance/2)))*gamedata.zoom};
                     
-                    effects.addExplosion(tPos, {animationExplosionScale:(Math.random()*0.15)+0.15});
+                    effects.addExplosion(tPos, {animationExplosionScale:(Math.random()*0.15)+0.15});										
                     
                     
                 }
@@ -350,7 +368,7 @@ window.effects = {
                         (Math.round(Math.random()*50)+50)*gamedata.zoom, Math.floor(Math.random()*360),
                          sPos.x, sPos.y);
                         
-                        effects.makeTrailAnimation(sPos, tPos, {projectilespeed:Math.floor(Math.random()*3+2), trailLength:40, animationColor:Array(160, 95, 10), trailColor:Array(248, 216, 65), animationWidth:Math.floor(Math.random()*3+1)}, false);
+                        effects.makeTrailAnimation(sPos, tPos, {projectilespeed:Math.floor(Math.random()*1+2), trailLength:20, animationColor:Array(255, 175, 50), trailColor:Array(255, 75, 50), animationWidth:Math.floor(Math.random()*4+2)}, false);
                     }
                 }
                 
@@ -391,18 +409,21 @@ window.effects = {
                 var pos = self.pos;
                 var step = Math.ceil(size/30);
                 //console.log("step " + step);
-                canvas.fillStyle = "rgba(250,"+(230+self.green)+",80,"+0.01*a+")";
+                canvas.fillStyle = "rgba(255,"+(150+self.green)+",0,"+0.01*a+")";
                 for (var i = size; i>=1; i -= step){
                     
                 
                     if (i< size*0.7){
-                        canvas.fillStyle = "rgba(250,"+(155+self.green)+",12,"+0.02*a+")";
+                        canvas.fillStyle = "rgba(255,"+(100+self.green)+",0,"+0.02*a+")";
                     }
                     if (i< size*0.4){
-                        canvas.fillStyle = "rgba(255,"+(255+self.green)+",170,"+0.02*a+")";
+                        canvas.fillStyle = "rgba(200,"+(50+self.green)+",0,"+0.05*a+")";
                     }
-                    if (i< Math.ceil(size*0.3)){
-                        canvas.fillStyle = "rgba(255,255,255,"+0.05*a+")";
+                    if (i< Math.ceil(size*0.27)){
+                        canvas.fillStyle = "rgba(255,255,255,"+0.08*a+")";
+                    }
+                    if (i< Math.ceil(size*0.15)){
+                        canvas.fillStyle = "rgba(255,255,255,"+0.18*a+")";
                     }
                     
                     graphics.drawCircleNoStroke(canvas, pos.x, pos.y, i, 0);
@@ -459,14 +480,17 @@ window.effects = {
     
             var target = gamedata.getShip(fire.targetid);
             var shooter = gamedata.getShip(fire.shooterid);
-
             
             var weapon = shipManager.systems.getSystem(shooter, fire.weaponid);
             weapon = weaponManager.getFiringWeapon(weapon, fire);
+
+            effects.setZoom(fire, weapon)
+
+        //    setTimeout(function(){
             effects.animateShots(fire, weapon);
-       
-        }
-        
+
+         //   }, 1000);
+        }   
     },
     
     doneDisplayingWeaponFire: function(){
@@ -479,7 +503,7 @@ window.effects = {
     getCanvas: function(){
         if (effects.canvas == null){
             effects.canvas = graphics.getCanvas("effects");
-            }
+           }
         return effects.canvas;
             
     },
@@ -539,12 +563,64 @@ window.effects = {
             effects.makeBeamAnimation(sPos, tPos, weapon, hit, cur);
         }
     },
+
+
+    setZoom: function(fire, weapon){
+
+        var details = effects.getShotDetails(fire, weapon);
+
+        var start = details.sPos;
+        var stop = details.tPos;
+
+        var dis = mathlib.getDistance(start, stop);
+        var hexDistance = (dis/hexgrid.hexWidth());
+
+
+        if (hexDistance < 5){
+            gamedata.zoom = 1.3;
+        }
+        else if (hexDistance < 10){
+            gamedata.zoom = 1;
+        }
+        else if (hexDistance < 15){
+            gamedata.zoom = 0.9;
+        }
+        else if (hexDistance < 25){
+            gamedata.zoom = 0.8;
+        }
+        else if (hexDistance < 35){
+            gamedata.zoom = 0.5;
+        }
+
+        var ship = gamedata.getShip(fire.shooterid);
+
+        if (fire.targetid != -1){
+            var target = gamedata.getShip(fire.targetid);
+
+            scrolling.scrollToShip(target);
+
+        }else{
+            scrolling.scrollToPos({x:fire.x, y:fire.y});
+        }
+
+     //   console.log(gamedata.zoom);
+
+        resizeGame();
+
+    },   
+
+
     
     animateShots: function(fire, weapon){
+
+  //      console.log(fire);
+   //     console.log(weapon);
+
+
         var details = effects.getShotDetails(fire, weapon);
-               
-            
-                        
+
+		var hitSystem = fire.hitSystem;
+
         var animation = {
             tics:0,
             totalTics:5000,
@@ -837,8 +913,8 @@ window.effects = {
                     return;
                 }
                 
-                //canvas.fillStyle = "rgba("+c[0]+","+c[1]+","+c[2]+",0.02)";
-                //graphics.drawCircleNoStroke(canvas, cur.x, cur.y, 5*gamedata.zoom, 0);
+         //       canvas.fillStyle = "rgba("+c[0]+","+c[1]+","+c[2]+",0.02)";
+         //       graphics.drawCircleNoStroke(canvas, cur.x, cur.y, 5*gamedata.zoom, 0);
                 
                 
                 c = self.weapon.trailColor;
@@ -890,9 +966,14 @@ window.effects = {
     
     },
     
-    makeLaserAnimation: function(sPos, tPos, weapon, hit){
+    makeLaserAnimation: function(sPos, tPos, weapon, hit, currentlocation){
         
-        var step ={x:Math.random()*0.5-0.25, y:Math.random()*0.5-0.25};
+        
+                var step ={x:Math.random()*0.5-0.25, y:Math.random()*0.5-0.25};
+        
+     //   var step = if (self.weapon.step = 0) 
+      //  {x = 0, y = 0};
+	//	else {x:Math.random()*0.5-0.25, y:Math.random()*0.5-0.25};
                 
         var animation = {
             tics:0,
@@ -910,10 +991,11 @@ window.effects = {
                 var sPos = self.sPos;
                 var tPos = self.tPos;
                 var c = self.weapon.animationColor;
+                var b = self.weapon.animationColor2;
                 var a = getAlpha();
                 
-                tPos.x += step.x* gamedata.zoom;
-                tPos.y += step.y* gamedata.zoom;
+                tPos.x += step.x*gamedata.zoom;
+                tPos.y += step.y*gamedata.zoom;
                 
                 if (self.tics == 20 && self.hit && !self.explo)
                     effects.addExplosion(tPos, weapon);
@@ -930,11 +1012,13 @@ window.effects = {
                     }
                     canvas.strokeStyle = "rgba("+c[0]+","+c[1]+","+c[2]+","+a+")";
                     graphics.drawLine(canvas, sPos.x, sPos.y, tPos.x, tPos.y, i*gamedata.zoom);
-                    
-                    
+                    canvas.strokeStyle = "rgba("+b[0]+","+b[1]+","+b[2]+","+8*a+")";
+                    graphics.drawLine(canvas, sPos.x, sPos.y, tPos.x, tPos.y, i*gamedata.zoom*self.weapon.animationWidth2);
+
+
                 }
                 
-                for (var i = Math.round(self.weapon.animationWidth*2*gamedata.zoom); i>=1; i--){
+                for (var i = Math.round(self.weapon.animationWidth*1.5*gamedata.zoom); i>=1; i--){
                     if (i == 1){
                         canvas.fillStyle = "rgba(255,255,255,"+a*2+")";
                     }else{
@@ -1242,9 +1326,11 @@ window.effects = {
                         graphics.drawCircleNoStroke(canvas, cur.x, cur.y, 2*gamedata.zoom, 0);
                         continue;
                     }
-                    canvas.fillStyle = "rgba("+c[0]+","+c[1]+","+c[2]+",0.01)";
+                    canvas.fillStyle = "rgba("+c[0]+","+c[1]+","+c[2]+",0.02)";
                     graphics.drawCircleNoStroke(canvas, cur.x, cur.y, i*gamedata.zoom, 0);
-                    //graphics.drawLine(canvas, sPos.x, sPos.y, cur.x, cur.y, i*gamedata.zoom);
+                    canvas.fillStyle = "rgba(255,255,255,0.6)";
+                    graphics.drawCircleNoStroke(canvas, cur.x, cur.y, i*0.1, 0);
+                  //  graphics.drawLine(canvas, sPos.x, sPos.y, cur.x, cur.y, i*gamedata.zoom);
                     
                     
                 }

@@ -27,15 +27,24 @@ Ship.prototype =
         for (var i in this.systems)
         {
             var system = this.systems[i];
-            if (!this.checkIsValidAffectingSystem(system, pos))
+
+            if (!this.checkIsValidAffectingSystem(system, shipManager.getShipPosition(shooter)))
                 continue;
+
+            if(typeof system == 'Shield'
+                && mathlib.getDistanceBetweenShipsInHex(shooter, this).toFixed(2) == 0
+                && shooter.flight
+            ){
+                // Shooter is a flight, and the flight is under the shield
+                continue;
+            }
 
             var mod = system.getDefensiveHitChangeMod(this, shooter, pixelpos);
 
             if ( ! (affectingSystems[system.defensiveType])
                 || affectingSystems[system.defensiveType] < mod)
             {
-                console.log("getting defensive: " + system.name + " mod: " + mod);
+      //          console.log("getting defensive: " + system.name + " mod: " + mod);
                 affectingSystems[system.getDefensiveType] = mod;
             }
 
@@ -63,7 +72,7 @@ Ship.prototype =
             return false;
 
         //if the system has arcs, check that the position is on arc
-        if(system.startArc && system.endArc){
+        if(typeof system.startArc == 'number' &&  typeof system.endArc == 'number'){
 
             var tf = shipManager.getShipHeadingAngle(this);
 

@@ -47,7 +47,11 @@ class Jammer extends ShipSystem implements SpecialAbility{
         
         return $this->getOutput();
     }
-     
+
+     public function setSystemDataWindow($turn){
+        $this->data["Ability:"] = "Denies a hostile OEW-lock versus this ship.";
+    }
+
 }
 
 class Stealth extends ShipSystem implements SpecialAbility{
@@ -80,7 +84,6 @@ class Stealth extends ShipSystem implements SpecialAbility{
         
         if (Mathlib::getDistanceOfShipInHex($shooter, $target) > 5)
         {
-            Debug::log("return 1");
             return 1;
         }
             
@@ -161,8 +164,10 @@ class Shield extends ShipSystem implements DefensiveSystem{
         
         if ($this->checkIsFighterUnderShield($target, $shooter))
             return 0;
-        
-        return $this->getOutput();
+
+        $output = $this->output;
+        $output -= $this->outputMod;
+        return $output;
     }
     
     public function getDefensiveDamageMod($target, $shooter, $pos, $turn){
@@ -175,7 +180,9 @@ class Shield extends ShipSystem implements DefensiveSystem{
         if ($this->hasCritical('DamageReductionRemoved'))
             return 0;
         
-        return $this->getOutput();
+        $output = $this->output;
+        $output -= $this->outputMod;
+        return $output;
     }
 }
 
@@ -237,7 +244,6 @@ class Reactor extends ShipSystem{
     
     public function addCritical($shipid, $phpclass, $gamedata) {
         if(strcmp($phpclass, "ForcedOfflineOneTurn") == 0){
-            debug::log("On nooooos!");
             // This is the reactor. If it takes a ForcedOffLineForOneTurn,
             // propagate this crit to all systems that can be shut down.
             $ship = $gamedata->getShipById($shipid);
@@ -247,8 +253,6 @@ class Reactor extends ShipSystem{
                 }
             }
         }
-
-        debug::log("who cares?");
 
         parent::addCritical($shipid, $phpclass, $gamedata);
     }
