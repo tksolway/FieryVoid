@@ -29,6 +29,7 @@
         public $maxBoostLevel = 2;
         public $loadingtime = 1;
         public $maxpulses = 3;
+        public $priority = 5;
 		
         public $rangePenalty = 1;
         public $fireControl = array(4, 2, 2); // fighters, <mediums, <capitals 
@@ -56,13 +57,13 @@
             
             switch($this->getBoostLevel($turn)){
                 case 0:
-                    $this->data["Pulses"] = '1-2';
+                    $this->data["Pulses"] = 'D 2';
                     break;
                 case 1:
-                    $this->data["Pulses"] = '1-3';
+                    $this->data["Pulses"] = 'D 3 +1';
                     break;
                 case 2:
-                    $this->data["Pulses"] = '1-3';
+                    $this->data["Pulses"] = 'D 3 +2';
                     break;
             }            
 
@@ -181,6 +182,7 @@ class GraviticBolt extends Gravitic
         public $maxBoostLevel = 2;
         public $loadingtime = 1;
         public $curDamage = 9;
+        public $priority = 7;
 		
         public $rangePenalty = 1;
         public $fireControl = array(4, 2, 2); // fighters, <mediums, <capitals 
@@ -313,6 +315,7 @@ class GraviticBolt extends Gravitic
         public $animation = "laser";
         public $animationColor = array(99, 255, 00);
         public $animationWidth = 4;
+        public $animationWidth2 = 0.4;
         
         public $loadingtime = 4;
         public $damageType = "raking";
@@ -349,6 +352,9 @@ class GraviticBolt extends Gravitic
         public $animationWidth = 2;
         public $animationExplosionScale = 0.15;
         public $loadingtime = 1;
+
+        public $priority = 7;
+
 		
         public $rangePenalty = 0.33;
         public $fireControl = array(-1, 2, 2); // fighters, <mediums, <capitals 
@@ -460,6 +466,7 @@ class GraviticBolt extends Gravitic
         public $animation = "laser";
         public $animationColor = array(99, 255, 00);
         public $animationWidth = 1;
+        public $animationWidth2 = 0;
         
         public $loadingtime = 3;
         public $damageType = "raking";
@@ -488,7 +495,9 @@ class GraviticBolt extends Gravitic
     }
     
     class GraviticLance extends DualWeapon{
-    
+
+    public $priority = 7;
+
 	public $firingModes = array( 
 		1 => "Lance",
 		2 => "Beams"
@@ -523,6 +532,8 @@ class GraviticBolt extends Gravitic
         public $animation = "laser";
         public $animationColor = array(99, 255, 00);
         public $animationWidth = 5;
+        public $animationWidth2 = 0.5;
+
         public $firingModes = array( 1 => "Sustained");
 
         
@@ -594,6 +605,7 @@ class GraviticBolt extends Gravitic
         public $animation = "laser";
         public $animationColor = array(99, 255, 00);
         public $animationWidth = 2;
+        public $animationWidth2 = 0.2;
         
         public $damageType = "raking";
         public $raking = 6;

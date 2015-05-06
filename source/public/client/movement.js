@@ -34,6 +34,10 @@ shipManager.movement = {
             ship.deploymove.x = pos.x;
             ship.deploymove.y = pos.y;
         }
+
+        if (ship.deploymove && ship.osat){
+    		ship.deploymove.speed = 0;
+        }
         
         shipManager.drawShip(ship);
         
@@ -51,6 +55,22 @@ shipManager.movement = {
         
         ship.deploymove.facing = newfacing;
         ship.deploymove.heading = newheading;
+    }, 
+
+	doDeploymentAccel: function(ship, accel){
+
+        var value = 1;
+        if (!accel){
+            value = -1;
+        }
+
+        var speed = ship.deploymove.speed;
+        var newSpeed = speed + value;
+
+        if (newSpeed >= 3 && newSpeed <= 7){
+			ship.deploymove.speed += value;
+			shipManager.drawShip(ship);
+		}
     },
 
     isMovementReady: function(ship){
@@ -256,11 +276,11 @@ shipManager.movement = {
 	},
     
     canRoll: function(ship){
-		
+
         if (gamedata.gamephase != 2)
             return false;
         
-		if (ship.flight)
+		if (ship.flight || ship.osat)
 			return false;
 	
 		if (shipManager.isDestroyed(ship) || shipManager.isAdrift(ship))
@@ -319,8 +339,8 @@ shipManager.movement = {
         hexgrid.unSelectHex();
         shipManager.drawShip(ship);
         shipWindowManager.assignThrust(ship);
-            
-            
+
+        ship.rolling = true;
     },
     
     isRolling: function(ship){
@@ -328,21 +348,24 @@ shipManager.movement = {
         
         if (ship.agile)
 			return false;
+
         
         for (var i in ship.movement){
             var m = ship.movement[i];
             if (m.turn != gamedata.turn)
                 continue;
-            if (m.type == "isRolling")
+
+        	if (m.type == "isRolling")
                 rolling = true;
             
             if (m.type == "roll" && m.commit)
                 rolling = !rolling;
         }
- 
         return rolling;
         
     },
+
+
     
     isRolled: function(ship){
         var ret = false;
@@ -447,7 +470,7 @@ shipManager.movement = {
     
     canSlip: function(ship, right){
         
-        if (gamedata.gamephase != 2)
+        if (gamedata.gamephase != 2)        	
             return false;
 	
 		if (shipManager.isDestroyed(ship) || shipManager.isAdrift(ship))
@@ -498,7 +521,7 @@ shipManager.movement = {
     },
     
     doSlip: function(ship, right){
-        
+
         if (!shipManager.movement.canSlip(ship, right))
             return false;
             
@@ -509,31 +532,87 @@ shipManager.movement = {
         var shipX = ship.movement[ship.movement.length-1].x;
         var shipY = ship.movement[ship.movement.length-1].y;
         var pos = hexgrid.getHexToDirection(angle, shipX, shipY);
+
+
+		var isPivoting = shipManager.movement.isPivoting(ship);
+
         
         var slipcost = Math.ceil(shipManager.movement.getSpeed(ship) / 5);
         if (ship.flight)
             slipcost = 1;
+
         
         var reversed = shipManager.movement.hasSidesReversedForMovement(ship);
         if (reversed)
             right = !right;
             
         var requiredThrust = Array(null, null, null, null, null);
+
         
         var commit = false;
         var assignedThrust = Array();
+
+		
         if (ship.flight){
 			commit = true;
+
 			requiredThrust[0] = slipcost;
 			assignedThrust[0] = slipcost;
-		}else{
-			if (right)
-				requiredThrust[3] = slipcost;
-			else
-				requiredThrust[4] = slipcost;
-			
 		}
-        
+
+		else{
+	
+		var facing = ship.movement[ship.movement.length-1].facing;
+		var heading = ship.movement[ship.movement.length-1].heading;
+		var pivot = isPivoting;
+
+
+		angle = angle / 60;
+
+
+
+	//		console.log("facing: " + facing + ", heading: " + heading, pivot + ", angle: " + angle, right);
+
+			if (facing === heading){
+				if (heading - 1 === angle || heading + 5 === angle){
+					requiredThrust[4] = slipcost;
+				}
+				else if (heading + 1 === angle || heading - 5 === angle){
+					requiredThrust[3] = slipcost;
+				}
+			}
+			else if (facing + 3 === heading || facing - 3 === heading){
+				if (heading - 1 === angle || heading + 5 === angle){
+					requiredThrust[3] = slipcost;
+				}
+				else if (heading + 1 === angle || heading - 5 === angle){
+					requiredThrust[4] = slipcost;
+				}
+			}
+			else if (!ship.gravitic){
+				if (heading + 1 === angle || heading - 5 === angle){
+					requiredThrust[3] = slipcost;
+				}
+				else if (heading - 1 === angle || heading + 5 === angle){
+					requiredThrust[4] = slipcost;
+				}
+			}
+			else if (ship.gravitic){
+				if (facing === angle){
+					requiredThrust[2] = slipcost;
+				}
+				else if (facing + 3 === angle || facing - 3 === angle){
+					requiredThrust[1] = slipcost;					
+				}
+				else if (facing + 1 === angle || facing + 2 === angle || facing - 4 === angle || facing - 5 === angle){
+					requiredThrust[3] = slipcost;					
+				}	
+				else if (facing - 1 === angle || facing - 2 === angle || facing + 4 === angle || facing + 5 === angle){
+					requiredThrust[4] = slipcost;					
+				}
+			}
+		}
+
         
         
 		var off = shipManager.movement.getMovementOffsetPos(ship, newheading, pos);
@@ -590,6 +669,9 @@ shipManager.movement = {
 			return false;
 			
 		if (shipManager.systems.isEngineDestroyed(ship))
+			return false;
+
+		if (ship.osat)
 			return false;
 			
         var name = (right) ? "pivotright" : "pivotleft";
@@ -804,10 +886,7 @@ shipManager.movement = {
             
             if (!ship.gravitic && shipManager.movement.isTurn(movement) && pivoting != "no"){
                 pivoting = "no";
-            }
-            
-            
-            
+            }            
         }
      
         return pivoting;
@@ -889,25 +968,37 @@ shipManager.movement = {
             var movement = ship.movement[i];
             if (movement.turn != gamedata.turn)
                 continue;
-                
+              
             if ( movement.type == "pivotleft" || movement.type == "pivotright"){
                 return true;
             }
             
             if ( movement.type == "isPivotingRight" || movement.type == "isPivotingLeft"){
                 return true;
-            }
-            
-            
+            }            
         }
         
         return false;
     },
     
     canChangeSpeed: function(ship, accel){
-        
-        if (gamedata.gamephase != 2)
+
+        if (ship.osat){
+        	return false;
+        }
+
+        if (gamedata.gamephase == -1 && ship.deploymove)
+            return true;
+
+
+    	if (ship.shipSizeClass === -1 && shipManager.movement.isPivoting(ship) !== "no" && (!ship.gravitic)){
+   // 		console.log(shipManager.movement.isPivoting(ship));
+    		return false;
+    	}
+
+        if (gamedata.gamephase != 2){
             return false;
+        }
 	
         if (shipManager.isDestroyed(ship) || shipManager.isAdrift(ship))
             return false;
@@ -917,6 +1008,25 @@ shipManager.movement = {
             
         if (shipManager.systems.isEngineDestroyed(ship))
             return false;
+
+
+        var heading = shipManager.movement.getLastCommitedMove(ship).heading;
+        var facing = shipManager.movement.getLastCommitedMove(ship).facing;
+
+		if (!ship.gravitic){
+			if (heading !== facing){
+				if (heading < 3){
+					if (heading + 3 !== facing){
+						return false;
+					}		
+				}
+				else if (heading > 3){
+					if (heading - 3 !== facing){
+						return false;
+					}		
+				}
+			}		
+		}
         
         for (var i in ship.movement){
             var movement = ship.movement[i];
@@ -943,7 +1053,7 @@ shipManager.movement = {
         if ( ship.accelcost <= shipManager.movement.getRemainingEngineThrust(ship)){
             return true;
         }
-        
+
         return false;
     },
     
@@ -997,10 +1107,16 @@ shipManager.movement = {
     
     changeSpeed: function(ship, accel){
 
+
         if (!shipManager.movement.canChangeSpeed(ship, accel))
             return false;
 
-	if (shipManager.movement.deleteSpeedChange(ship, accel)){
+        if (gamedata.gamephase == -1){
+        	shipManager.movement.doDeploymentAccel(ship, accel);
+        	return;
+        }
+
+		if (shipManager.movement.deleteSpeedChange(ship, accel)){
             ship.currentturndelay = shipManager.movement.calculateCurrentTurndelay(ship);
             return;
         }
@@ -1010,6 +1126,9 @@ shipManager.movement = {
 			value = 1;
 			
         requiredThrust = Array(null,null,null,null,null);
+
+
+
         var heading = shipManager.movement.getLastCommitedMove(ship).heading;
         var facing = shipManager.movement.getLastCommitedMove(ship).facing;
         var direction;
@@ -1041,7 +1160,62 @@ shipManager.movement = {
 			requiredThrust[0] = ship.accelcost;
 			assignedThrust[0] = ship.accelcost;
 		}else{
-			 requiredThrust[direction] = ship.accelcost;
+
+
+  //      console.log("heading: " + heading + ",facing: " +  facing, accel);
+
+
+			if (facing === heading){
+				requiredThrust[direction] = ship.accelcost;
+			}
+			else if (facing - 3 === heading){
+			requiredThrust[direction] = ship.accelcost;
+			}
+			else if (facing + 3 === heading){
+				requiredThrust[direction] = ship.accelcost;
+			}
+			else if (ship.gravitic){
+				if (facing + 5 === heading){
+					if (accel) {requiredThrust[4] = ship.accelcost}
+					else requiredThrust[3] = ship.accelcost;
+				}
+				else if (facing - 5 === heading){
+					if (accel) {requiredThrust[3] = ship.accelcost}
+					else requiredThrust[4] = ship.accelcost;
+				}
+				else if (facing + 4 === heading){
+					if (accel) {requiredThrust[4] = ship.accelcost}
+					else requiredThrust[3] = ship.accelcost;
+				}
+				else if (facing - 4 === heading){
+					if (accel) {requiredThrust[3] = ship.accelcost}
+					else requiredThrust[4] = ship.accelcost;
+				}
+				else if (facing + 3 === heading){
+					if (accel) {requiredThrust[2] = ship.accelcost}
+					else requiredThrust[1] = ship.accelcost;
+				}
+				else if (facing - 3 === heading){
+					if (accel) {requiredThrust[1] = ship.accelcost}
+					else requiredThrust[2] = ship.accelcost;
+				}
+				else if (facing + 2 === heading){
+					if (accel) {requiredThrust[3] = ship.accelcost}
+					else requiredThrust[4] = ship.accelcost;
+				}
+				else if (facing - 2 === heading){
+					if (accel) {requiredThrust[4] = ship.accelcost}
+					else requiredThrust[3] = ship.accelcost;
+				}
+				else if (facing + 1 === heading){
+					if (accel) {requiredThrust[3] = ship.accelcost}
+					else requiredThrust[4] = ship.accelcost;
+				}
+				else if (facing - 1 === heading){
+					if (accel) {requiredThrust[4] = ship.accelcost}
+					else requiredThrust[3] = ship.accelcost;
+				}
+			}
 		}
         
        
@@ -1403,9 +1577,19 @@ shipManager.movement = {
     
     },
     
+    isGoingSideways: function(ship){
+        var heading = shipManager.movement.getLastCommitedMove(ship).heading;
+        var facing = shipManager.movement.getLastCommitedMove(ship).facing;
+
+        if (mathlib.addToHexFacing(facing, 2) == heading || mathlib.addToHexFacing(facing, -2) == heading){
+        	return true
+        }
+    },
+    
     isGoingBackwards: function(ship){
         var heading = shipManager.movement.getLastCommitedMove(ship).heading;
         var facing = shipManager.movement.getLastCommitedMove(ship).facing;
+
         if (facing == heading || mathlib.addToHexFacing(facing, 1) == heading || mathlib.addToHexFacing(facing, -1) == heading)
 			return false;
 		
@@ -1415,23 +1599,51 @@ shipManager.movement = {
             
     },
     
-    //TURN
+    //TURNdo
+
+	hasTurned: function(ship){
+		for (var i = 0; i < ship.movement.length; i++){
+			var m = ship.movement[i];
+            if (m.turn != gamedata.turn){
+                continue;
+            }
+            else if (m.type == "turnleft" || m.type == "turnright"){
+            	return true;
+            }
+		}
+		return false;
+	},
+
     
     canTurn: function(ship, right){
-        //console.log(ship.name + " checking turn");
         
-        if ( gamedata.gamephase == -1 && ship.deploymove)
+        if (gamedata.gamephase == -1 && ship.deploymove)
             return true;
         
         if (gamedata.gamephase != 2)
             return false;
-        
+
+        if (ship.osat){
+	    	for (var i = 0; i < ship.systems.length; i++){
+	    		var system = ship.systems[i];
+	    		if (system.name === "thruster"){
+	    			if (system.destroyed){
+	    				return false;
+	    			}
+	    			else if (system.criticals[0] != null && system.criticals[0].phpclass == "OSatThrusterCrit"){
+	    				if (ship.movement[ship.movement.length-1].type == "turnleft" || ship.movement[ship.movement.length-1].type == "turnright"){
+	    					return false;
+	    				}
+	    			}	
+				}
+	    	} return true;
+	    }
+
 		if (shipManager.isDestroyed(ship) || shipManager.isAdrift(ship))
 			return false;
 		
 		if (shipManager.systems.isEngineDestroyed(ship))
 			return false;
-			
 			
         var heading = shipManager.movement.getLastCommitedMove(ship).heading;
         var facing = shipManager.movement.getLastCommitedMove(ship).facing;
@@ -1487,9 +1699,11 @@ shipManager.movement = {
     },
     
     doTurn: function(ship, right){
-        
-        if (!shipManager.movement.canTurn(ship, right)){
-            return false;
+
+        if (!ship.osat){
+	        if (!shipManager.movement.canTurn(ship, right)){
+	            return false;
+	        }
         }
     
         if (gamedata.gamephase == -1){
@@ -1507,7 +1721,14 @@ shipManager.movement = {
             }else{
                 shipManager.movement.doNormalTurn(ship, right);
             }
-	}else{
+		}
+		else if (ship.osat){
+			if (shipManager.movement.canTurn(ship, right)){
+				shipManager.movement.doNormalTurn(ship, right);
+			}
+		}
+		else
+		{
             if (shipManager.movement.canTurnIntoPivot(ship, right) && !ship.gravitic){
                 shipManager.movement.doIntoPivotTurn(ship, right);
             }else if(shipManager.movement.canTurnIntoPivot(ship, right) && ship.gravitic){
@@ -1518,7 +1739,8 @@ shipManager.movement = {
             }
         }
     },
-    
+
+
     doIntoPivotTurn: function(ship, right){
         var requiredThrust = shipManager.movement.calculateRequiredThrust(ship, right);
         var lastMovement = ship.movement[ship.movement.length-1];
@@ -1576,6 +1798,10 @@ shipManager.movement = {
 
     doNormalTurn: function(ship, right){
         var requiredThrust = shipManager.movement.calculateRequiredThrust(ship, right);
+        if (ship.osat){
+        	requiredThrust = 0;
+        }
+
         var lastMovement = ship.movement[ship.movement.length-1];
             
         var name;
@@ -1596,7 +1822,7 @@ shipManager.movement = {
         newfacing = mathlib.addToHexFacing(lastMovement.facing, step);
         newheading = mathlib.addToHexFacing(lastMovement.heading, step);
 
-        if(ship.flight){
+        if(ship.flight || ship.osat){
             commit = true;
             assignedThrust[0] = requiredThrust[0];
         }
@@ -1666,11 +1892,68 @@ shipManager.movement = {
         any = turncost % 2;
         
         var back = shipManager.movement.isGoingBackwards(ship);
+			
+        var heading = shipManager.movement.getLastCommitedMove(ship).heading;
+        var facing = shipManager.movement.getLastCommitedMove(ship).facing;
 
         var reversed = ((back || shipManager.movement.isRolled(ship)) && !(back && shipManager.movement.isRolled(ship)));
+        
+
+		console.log("head: " + heading + " face:" + facing);
+		if (right){console.log("right");}
+
+		if (facing != heading){
+			if (ship.gravitic){
+				if (heading + 5 === facing || heading - 1 === facing){
+					if (right){
+						sideindex = 3;
+						rearindex = 1;
+					}
+					else {
+						sideindex = 3;
+						rearindex = 2;
+					}
+				}
+				if (heading + 4 === facing || heading - 2 === facing){
+					if (right){
+						sideindex = 3;
+						rearindex = 1;
+					}
+					else {
+						sideindex = 3;
+						rearindex = 2;
+					}
+				}
+				if (heading + 2 === facing || heading - 4 === facing){
+					if (right){
+						sideindex = 4;
+						rearindex = 1;
+					}
+					else {
+						sideindex = 4;
+						rearindex = 2;
+					}
+				}
+				if (heading + 1 === facing || heading - 5 === facing){
+					if (right){
+						sideindex = 4;
+						rearindex = 1;
+					}
+					else {
+						sideindex = 4;
+						rearindex = 2;
+					}
+				}
+	        requiredThrust[0] = any;
+	        requiredThrust[sideindex] = side;
+	        requiredThrust[rearindex] = rear;
+	        return requiredThrust;
+			}
+		}
+        
         if (reversed)
             right = !right;
-        
+
         if ( right){
             sideindex = 3;
         }else{
@@ -1683,6 +1966,7 @@ shipManager.movement = {
             rearindex = 2;
         }
         
+
         requiredThrust[0] = any;
         requiredThrust[sideindex] = side;
         requiredThrust[rearindex] = rear;
@@ -1699,7 +1983,6 @@ shipManager.movement = {
 		if (empty){
 			requiredThrust[0] = 1;
 		}
-		
         return requiredThrust;
     },
         

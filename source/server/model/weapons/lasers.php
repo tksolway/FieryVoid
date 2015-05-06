@@ -7,8 +7,9 @@
         }
         public $raking = 10;
         private $damages = array();
+        public $priority = 3;
         
-        public function damage( $target, $shooter, $fireOrder, $pos, $gamedata, $damage, $location = null){
+        public function damage($target, $shooter, $fireOrder, $pos, $gamedata, $damage, $location = null){
             
             $rake = $this->raking;
             
@@ -86,13 +87,7 @@
                 if ($overkillSystem != null)
                     $this->doDamage($target, $shooter, $overkillSystem, $damage, $fireOrder, $pos, $gamedata);
             }
-        
-            
-        
         }
-        
-        
-    
     }
     
     class Laser extends Raking{
@@ -112,7 +107,6 @@
         }
     
         
-    
     }
 
     class HeavyLaser extends Laser{
@@ -122,6 +116,7 @@
         public $animation = "laser";
         public $animationColor = array(255, 11, 11);
         public $animationWidth = 4;
+        public $animationWidth2 = 0.2;
         
         public $loadingtime = 4;
         public $overloadable = true;
@@ -142,8 +137,8 @@
         public function setMaxDamage(){     $this->maxDamage = 60 - $this->dp;      }
         
         
-        
     }
+
     
     class MediumLaser extends Laser{
         
@@ -153,6 +148,7 @@
         public $animationColor = array(255, 11, 11);
         public $animationExplosionScale = 0.18;
         public $animationWidth = 3;
+        public $animationWidth2 = 0.3;
         
         public $loadingtime = 3;
         
@@ -181,11 +177,13 @@
         public $animationColor = array(255, 11, 11);
         public $animationExplosionScale = 0.15;
         public $animationWidth = 2;
+        public $animationWidth2 = 0.2;
         
         public $loadingtime = 2;
         
         public $damageType = "raking";
         public $raking = 10;
+        public $priority = 4;
         
         public $rangePenalty = 1;
         public $fireControl = array(-2, 1, 2); // fighters, <mediums, <capitals 
@@ -206,6 +204,7 @@
         public $animation = "laser";
         public $animationColor = array(255, 11, 115);
         public $animationWidth = 4;
+        public $animationWidth2 = 0.2;
         
         public $loadingtime = 3;
         
@@ -240,11 +239,13 @@
         public $animation = "laser";
         public $animationColor = array(255, 11, 115);
         public $animationWidth = 3;
+        public $animationWidth2 = 0.3;
         
         public $loadingtime = 2;
         
         public $damageType = "raking";
         public $raking = 10;
+        public $priority = 4;
         
         public $rangePenalty = 0.33;
         public $fireControl = array(-4, 3, 3); // fighters, <mediums, <capitals 
@@ -265,6 +266,7 @@
         public $animation = "laser";
         public $animationColor = array(255, 11, 115);
         public $animationWidth = 4;
+        public $animationWidth2 = 0.4;
         
         public $loadingtime = 2;
         
@@ -291,6 +293,7 @@ class NeutronLaser extends Laser{
         public $animation = "laser";
         public $animationColor = array(175, 225, 175);
         public $animationWidth = 4;
+        public $animationWidth2 = 0.4;
 
         public $extraoverloadshots = 2;
         public $loadingtime = 3;
@@ -325,6 +328,7 @@ class NeutronLaser extends Laser{
         public $animation = "laser";
         public $animationColor = array(175, 225, 175);
         public $animationWidth = 5;
+        public $animationWidth2 = 0.5;
 
         public $extraoverloadshots = 3;
         public $loadingtime = 3;

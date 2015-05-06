@@ -10,11 +10,21 @@
         public $animationWidth = 4;
         public $animationExplosionScale = 0.20;
         public $trailLength = 20;
-		        
+        public $priority = 2;
         public $loadingtime = 3;
         public $rangePenalty = 1;
         public $fireControl = array(-6, 4, 4); // fighters, <=mediums, <=capitals 
-        public $flashDamage = true;
+        public $flashDamage = true; 
+
+
+        public function setSystemDataWindow($turn){
+
+            $this->data["Weapon type"] = "Antimatter";
+            $this->data["Damage type"] = "Flash";
+            $this->data["Remark"] = "Damage is increased depending on how high of a hit is scored.";
+
+            parent::setSystemDataWindow($turn);
+        }
         
         function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
             parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);

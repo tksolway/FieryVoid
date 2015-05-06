@@ -52,7 +52,12 @@
             if($this->faction == "Centauri"){
                 return $this->doCentauriInitiativeBonus($gamedata);
             }
-            
+            if($this->faction == "Yolu"){
+                return $this->doYoluInitiativeBonus($gamedata);
+            }
+            if($this->faction == "Dilgar"){
+                return $this->doDilgarInitiativeBonus($gamedata);
+            }
             return $this->iniativebonus;
         }
         
@@ -66,10 +71,48 @@
                     return ($this->iniativebonus+5);
                 }
             }
-
-            return $this->iniativebonus;
+		return $this->iniativebonus;
         }
-        
+                
+        private function doDilgarInitiativeBonus($gamedata){
+
+            $mod = 0;                
+
+            if($gamedata->turn > 0 && $gamedata->phase >= 0 ){
+                $pixPos = $this->getCoPos();
+                $ships = $gamedata->getShipsInDistance($pixPos, ((8*mathlib::$hexWidth) + 1));
+
+                foreach($ships as $ship){
+                    if( !$ship->isDestroyed()
+                            && ($ship->faction == "Dilgar")
+                            && ($this->userid == $ship->userid)
+                            && ($ship->shipSizeClass == 3)
+                            && ($this != $ship)){
+                                $cnc = $ship->getSystemByName("CnC");
+                                $bonus = $cnc->output;
+                                if ($bonus > $mod){
+                                    $mod = $bonus;
+                                } else continue;
+                    }                    
+                }
+            }
+        //    debug::log($this->phpclass."- bonus: ".$mod);
+		return $this->iniativebonus + $mod*5;
+        }
+		
+        private function doYoluInitiativeBonus($gamedata){
+            foreach($gamedata->ships as $ship){
+                if(!$ship->isDestroyed()
+                    && ($ship->faction == "Yolu")
+                    && ($this->userid == $ship->userid)
+                    && ($ship instanceof Udran)
+                    && ($this != $ship)){
+                    return ($this->iniativebonus+5);
+                }
+            }
+		return $this->iniativebonus;
+        }
+		
         public function setEW($ew)
         {
             $this->EW[] = $ew;
@@ -276,6 +319,14 @@
             }
             
             return null;
+        }
+
+        public function getStructureByIndex($index){
+            foreach ($this->systems as $system){
+                if ($system->displayName == "Structure" && $system->location == $index){
+                    return $system;
+                }
+            }
         }
         
         public function getHitChanceMod($shooter, $pos, $turn){
@@ -884,6 +935,9 @@
     }
     
     class BaseShipNoAft extends BaseShip{
+
+        public $draziCap = true;
+
         function __construct($id, $userid, $name, $slot){
             parent::__construct($id, $userid, $name,$slot);
         }
@@ -933,6 +987,7 @@
 
     class HeavyCombatVesselLeftRight extends BaseShip{
     
+        public $draziHCV = true;
         public $shipSizeClass = 2;
         
         function __construct($id, $userid, $name, $slot){
@@ -978,6 +1033,14 @@
           
                 
             return $location;
+        }
+
+        public function getStructureByIndex($index){
+            foreach ($this->systems as $system){
+                if ($system->displayName == "Structure"){
+                    return $system;
+                }
+            }
         }
         
         public function getHitSystem($pos, $shooter, $fire, $weapon, $location = null){
@@ -1261,6 +1324,15 @@
             }
 
             return null;
+        }
+    }
+
+    class OSAT extends MediumShip{
+        public $osat = true;        
+        public $canvasSize = 100;
+
+        public function isDisabled(){
+           return false;
         }
     }
 ?>

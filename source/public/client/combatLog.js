@@ -33,8 +33,7 @@ window.combatLog = {
         var highC = 0;
         var notes = "";
         
-        for (var a in orders){
-            
+        for (var a in orders){            
                         
             count++;
             var fire = orders[a];
@@ -145,12 +144,18 @@ window.combatLog = {
         
             
         $(html).prependTo("#log");
+    },
             
         
-        
-        
-        // FIRE: Who, number, weapon at (target, location), hit change, shots hit/fired, (intercepted), pub notes
-        // * DAMAGED: What, how much, destroyed
+    logAmmoExplosion: function(ship){
+
+        var html = '<div class="logentry">';
+            html += '<span class="shiplink" data-id="'+ship.id+'" >' + ship.name + '</span>';   
+            html +=  ' suffered from a critical hit on its missile ordnance.';
+            html +=  ' <br>';
+            html +=  ' <li>Hit:';
+            html +='</span></div></ul>';
+        $(html).prependTo("#log");
     },
     
     logMoves: function(ship){

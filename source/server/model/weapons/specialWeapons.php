@@ -10,6 +10,7 @@
         public $animationWidth = 3;
 		public $animationExplosionScale = 0.25;
 		public $trailLength = 400;
+        public $priority = 1;
 		        
 		public $raking = 5;
         public $loadingtime = 2;
@@ -33,7 +34,9 @@
 	
 		public function setSystemDataWindow($turn){
 
-			$this->data["Weapon type"] = "Plasma";
+            $this->data["Damage type"] = "Raking (5)";
+            $this->data["Weapon type"] = "Plasma";
+            $this->data["Special"] = "Reduces armor of hit systems.";
 						
 			parent::setSystemDataWindow($turn);
 		}
@@ -64,8 +67,10 @@
         public $trailColor = array(175, 225, 175);
         public $projectilespeed = 15;
         public $animationWidth = 2;
+        public $animationWidth2 = 0.2;
         public $animationExplosionScale = 0.15;
         public $trailLength = 30;
+        public $priority = 5;
 
         public $loadingtime = 2;
 
@@ -119,10 +124,12 @@
 		public $trailColor = array(158, 240, 255);
 		public $projectilespeed = 15;
         public $animationWidth = 2;
-		public $animationExplosionScale = 0.10;
+        public $animationWidth2 = 0.2;
+        public $animationExplosionScale = 0.10;
 		public $trailLength = 30;
 		        
 	    public $loadingtime = 1;
+        public $priority = 10;
         
 			
         public $rangePenalty = 2;
@@ -193,10 +200,12 @@
         public $projectilespeed = 15;
         // You have to take a look at this.
         public $animationWidth = 2;
+        public $animationWidth2 = 0.2;
         // You have to take a look at this.
         public $animationExplosionScale = 0.10;
         // You have to take a look at this.
         public $trailLength = 30;
+        public $priority = 1;
 
         public $loadingtime = 2;
         public $rangePenalty = 3;

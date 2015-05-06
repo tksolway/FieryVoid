@@ -12,16 +12,52 @@
         
         public function chooseTarget($gd){
             $best = null;
-            
             foreach ($this->intercepts as $candidate){
                 $fire = $candidate->fire;
-                $shooter = $gd->getShipById($fire->shooterid);
+
                 $target = $gd->getShipById($fire->targetid);
-                $firingweapon = $shooter->getSystemById($fire->weaponid);
-                            
+
+
+                if ( $target->isDisabled() && $target->shipSizeClass > 0){
+                    continue;
+                }
                 
-                $damage = $firingweapon->getAvgDamage() * ceil($fire->shots/2);
-                //$hitChance = $firingweapon->calculateHit($gd, $fire);
+                $shooter = $gd->getShipById($fire->shooterid);
+                $firingweapon = $shooter->getSystemById($fire->weaponid);
+
+
+                $hitLocation = $target->getHitSection($shooter->getCoPos(), $shooter, $fire->turn, $firingweapon);
+                $armour;
+
+       //         debug::log("intercepting fire from: ".$target->phpclass." versus opposing ".$firingweapon->displayName." from ".$shooter->phpclass);
+
+                if ($target->shipSizeClass == -1){
+                    $armour = $target->systems[1]->armour[$hitLocation];
+                //    debug::log("flight armour: ".$armour);
+
+                }
+                else {
+                    $structure = $target->getStructureByIndex($hitLocation);
+                    $armour = $structure->armour;
+                 //   debug::log("non-flight armour: ".$armour);
+                }
+
+                if ($firingweapon instanceof Matter){
+                    $armour = 0;
+                } else if ($firingweapon instanceof Plasma){
+                    $armour = ceil($armour/2);
+                }
+                                            
+                $damage = ($firingweapon->getAvgDamage() - $armour) * (ceil($firingweapon->shots / 2));
+
+                if ($firingweapon instanceof Raking){
+                    $avg = $firingweapon->getAvgDamage();
+                    $rakes = $avg / $firingweapon->raking;
+                    $totalReduction = floor($armour *  $rakes); //floor to account for ability for rakes to hit same sys, hence NO armour
+                    $damage = $avg - $totalReduction;
+                }
+
+            //    debug::log($firingweapon->displayName.", total estimated dmg: ".$damage.", considering armour of:".$armour);
                 $numInter = $firingweapon->getNumberOfIntercepts($gd, $fire);
                 
                 $perc = 0;
@@ -37,10 +73,14 @@
                     
                 if (!$best || $best->blocked < $candidate->blocked )
                     $best = $candidate;
-                
             }
             
-            if ($best){
+            if ($best && $best->blocked > 0){
+
+            //    $shooter = $gd->getShipById($best->fire->shooterid);
+             //   $firingweapon = $shooter->getSystemById($best->fire->weaponid);
+              //  debug::log("intercepting: ".$firingweapon->displayName." for ".$best->blocked);
+
                 for ($i = 0; $i<$this->weapon->guns;$i++){
                     $interceptFire = new FireOrder(-1, "intercept", $this->ship->id, $best->fire->id, $this->weapon->id, -1, 
                     $gd->turn, $this->weapon->firingMode, 0, 0, $this->weapon->defaultShots, 0, 0, null, null);
@@ -102,13 +142,32 @@ class Firing{
         
         foreach($ship->systems as $fighter)
         {
-            if ($fighter->isDestroyed())
+            $exclusiveWasFired = false;
+            
+            if ($fighter->isDestroyed()){
                 continue;
+            }
+            
+            // check if fighter is firing weapons that exclude other
+            // weapons from firing. (Like IonBolt on a Rutarian.)
+            foreach ($fighter->systems as $weapon){
+                if($weapon instanceof Weapon){
+                    if($weapon->exclusive && $weapon->firedOnTurn($gd->turn)){
+                        $exclusiveWasFired = true;
+                        break;
+                    }
+                }
+            }
+            
+            if($exclusiveWasFired){
+                continue;
+            }
             
             foreach ($fighter->systems as $weapon)
             {
-            if (self::isValidInterceptor($gd, $weapon) === false)
-                continue;
+                if (self::isValidInterceptor($gd, $weapon) === false){
+                    continue;
+                }
 
                 $possibleIntercepts = self::getPossibleIntercept($gd, $ship, $weapon, $gd->turn);
                 $intercepts[] = new Intercept($ship, $weapon, $possibleIntercepts);
@@ -306,17 +365,44 @@ class Firing{
     
     
     public static function fireWeapons($gamedata){
+
+
+        $ordered = array();
+        $unordered  = array();
+
         
         foreach ($gamedata->ships as $ship){
             if ($ship instanceof FighterFlight){
                 continue;
             }
-                
-	    //FIRE all ships
+
             foreach($ship->getAllFireOrders() as $fire){
-                self::fire($ship, $fire, $gamedata);
+                $unordered[] = $fire;
+            }
+        }       
+
+        for ($i = 1; $i < 10; $i++){
+            foreach($unordered as $fire){
+
+            $ship = $gamedata->getShipById($fire->shooterid);
+            $wpn = $ship->getSystemById($fire->weaponid);
+            $p = $wpn->priority;
+
+            if ($p == $i){
+                $ordered[] = $fire;
+                }                        
             }
         }
+
+        foreach ($ordered as $fire){
+            $ship = $gamedata->getShipById($fire->shooterid);
+            $wpn = $ship->getSystemById($fire->weaponid);
+            $p = $wpn->priority;
+       //     debug::log("resolve --- Ship: ".$ship->shipClass.", id: ".$fire->shooterid." wpn: ".$wpn->displayName.", priority: ".$p);
+            self::fire($ship, $fire, $gamedata);
+        }
+
+
 
         // From here on, only fighter units are left.
         $chosenfires = array();
@@ -393,9 +479,12 @@ class Firing{
 			
 		if ($fire->rolled > 0)
 			return;
+
 		
 		$weapon = $ship->getSystemById($fire->weaponid);
 		
+        debug::log("resolving: ".$ship->shipClass." weapon: ".$weapon->displayName);
+
 		$weapon->fire($gamedata, $fire);
 		
 	}

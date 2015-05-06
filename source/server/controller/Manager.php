@@ -690,11 +690,9 @@ class Manager{
         Firing::automateIntercept($servergamedata);
         //$endtime = time();
         //Debug::log("AUTOMATE INTERCEPT - GAME: ".$gamedata->id." Time: " . ($endtime - $starttime) . " seconds.");
-        
         //$starttime = time();
 
         Firing::fireWeapons($servergamedata);
-
         if(self::$weaponBasedMoveHandler == null){
             self::$weaponBasedMoveHandler = new WeaponBasedMovHandler($servergamedata);
         }
@@ -703,12 +701,11 @@ class Manager{
         self::$weaponBasedMoveHandler->handleDamage($servergamedata);
         //$endtime = time();
         //Debug::log("RESOLVING FIRE - GAME: ".$gamedata->id." Time: " . ($endtime - $starttime) . " seconds.");
-        
-        
+
         Criticals::setCriticals($servergamedata);
 		//var_dump($servergamedata->getNewFireOrders());
 		//throw new Exception();
-	self::$dbManager->submitFireorders($servergamedata->id, $servergamedata->getNewFireOrders(), $servergamedata->turn, 3);
+        self::$dbManager->submitFireorders($servergamedata->id, $servergamedata->getNewFireOrders(), $servergamedata->turn, 3);
         self::$dbManager->updateFireOrders($servergamedata->getUpdatedFireOrders());
         self::$dbManager->submitDamages($servergamedata->id, $servergamedata->turn, $servergamedata->getNewDamages());
         self::$dbManager->submitCriticals($servergamedata->id,  $servergamedata->getUpdatedCriticals(), $servergamedata->turn);
@@ -815,24 +812,25 @@ class Manager{
             $mod = 0;
             $speed = $ship->getSpeed();
         
-            if ( $speed < 5){
-                $mod = (5-$speed)*10;
-            }
-            
-            $CnC = $ship->getSystemByName("CnC");
-            
-            if ($CnC){
-				$mod += 5*($CnC->hasCritical("CommunicationsDisrupted", $gamedata->turn));
-				$mod += 10*($CnC->hasCritical("ReducedIniativeOneTurn", $gamedata->turn));
-				$mod += 10*($CnC->hasCritical("ReducedIniative", $gamedata->turn));
+            if ( !($ship instanceof OSAT) ){
+           //     debug::log("speed check for: ".$ship->shipClass);
+                if ($speed < 5){
+                    $mod = (5-$speed)*10;
+                }
+
+                $CnC = $ship->getSystemByName("CnC");
+
+                if ($CnC){
+                    $mod += 5*($CnC->hasCritical("CommunicationsDisrupted", $gamedata->turn));
+                    $mod += 10*($CnC->hasCritical("ReducedIniativeOneTurn", $gamedata->turn));
+                    $mod += 10*($CnC->hasCritical("ReducedIniative", $gamedata->turn));
+                }
 			}
-            
-            
-                        
             $ship->iniative = Dice::d(100) + $ship->getInitiativebonus($gamedata) - $mod;
+           //debug::log("ini submit for: ".$ship->shipClass."---:".$ship->iniative);
+
         }
         self::$dbManager->submitIniative($gamedata->id, $gamedata->turn, $gamedata->ships);
-        
     }
     
     private static function getShipsFromJSON($json){

@@ -93,10 +93,12 @@ window.shipManager = {
         if (shipManager.initiated == 1)
             return;
 
-        if (ship.dontDraw || ship.unavailable){
-            ship.shipclickableContainer.css("z-index", "1");
-            ship.htmlContainer.hide();
-            return;
+        if (gamedata.gamephase != -1){
+            if (ship.dontDraw || ship.unavailable){
+                ship.shipclickableContainer.css("z-index", "1");
+                ship.htmlContainer.hide();
+                return;
+            }   
         }
         //graphics.clearCanvas("shipcanvas_" + ship.id);
         var canvas = window.graphics.getCanvas("shipcanvas_" + ship.id);
@@ -422,10 +424,15 @@ window.shipManager = {
 
         for (var i in ship.movement)
         {
-            if (ship.movement[i].turn == turn)
+            if (ship.movement[i].turn === turn){
                 movement = ship.movement[i];
+            }
         }
 
+        if(movement === null && ship.movement.length > 0){
+            movement = ship.movement[ship.movement.length-1];
+        }
+        
         var x = movement.x;
         var y = movement.y;
         var xO = movement.xOffset;
@@ -646,7 +653,7 @@ window.shipManager = {
 
     isAdrift: function(ship){
 
-        if (ship.flight)
+        if (ship.flight || ship.osat)
 			return false;
 
         if (shipManager.criticals.hasCriticalInAnySystem(ship, "ShipDisabledOneTurn"))

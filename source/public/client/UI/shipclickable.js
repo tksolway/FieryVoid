@@ -38,8 +38,9 @@ window.shipClickable = {
 	},
 	
 	doMouseOver: function(){
-        var selectedShip = gamedata.getSelectedShip();
-	var ship = shipClickable.ship;
+		var selectedShip = gamedata.getSelectedShip();
+		var ship = shipClickable.ship;
+		console.log(ship);
         
         if(ship == null){
             // something was moused over that isn't a ship
@@ -95,16 +96,22 @@ window.shipClickable = {
 			$(".entry", e).remove();
 
             var jinking = shipManager.movement.getJinking(ship) * 5;
-
+            var flightArmour = shipManager.systems.getFlightArmour(ship);
+            var misc = shipManager.systems.getMisc(ship);
+            
+            shipClickable.addEntryElement("Ballistic navigator aboard", ship.hasNavigator === true);
             shipClickable.addEntryElement('Evasion: -' +jinking+ ' to hit', ship.flight === true && jinking > 0);
             shipClickable.addEntryElement('Unused thrust: ' + shipManager.movement.getRemainingEngineThrust(ship), ship.flight === true);
             shipClickable.addEntryElement('Pivoting ' + shipManager.movement.isPivoting(ship), shipManager.movement.isPivoting(ship) !== 'no');
             shipClickable.addEntryElement('Rolling', shipManager.movement.isRolling(ship));
             shipClickable.addEntryElement('Rolled', shipManager.movement.isRolled(ship));
             shipClickable.addEntryElement('Turn delay: ', shipManager.movement.calculateCurrentTurndelay(ship));
-            shipClickable.addEntryElement('Speed: ' + shipManager.movement.getSpeed(ship));
-            shipClickable.addEntryElement("Iniative: " + shipManager.getIniativeOrder(ship) + " ("+ship.iniative+")");
+            shipClickable.addEntryElement('Speed: ' + shipManager.movement.getSpeed(ship) + "    (" + ship.accelcost + ")");
+            shipClickable.addEntryElement("Iniative Order: " + shipManager.getIniativeOrder(ship) + "    (D100 + " + ship.iniativebonus + ")");
             shipClickable.addEntryElement("Escorting ships in same hex", shipManager.isEscorting(ship));
+            shipClickable.addEntryElement(misc, ship.flight != true);
+            shipClickable.addEntryElement(flightArmour, ship.flight === true);
+            
             var fDef = weaponManager.calculateBaseHitChange(ship, ship.forwardDefense) * 5;
             var sDef = weaponManager.calculateBaseHitChange(ship, ship.sideDefense) * 5;
             shipClickable.addEntryElement("Defence (F/S): " + fDef +"("+
@@ -117,6 +124,7 @@ window.shipClickable = {
             if (!gamedata.waiting && selectedShip && selectedShip != ship && gamedata.isMyShip(selectedShip)){
                 
                 var dis = (mathlib.getDistanceBetweenShipsInHex(selectedShip, ship)).toFixed(2);
+        //        var dis = (mathlib.getDistanceBetweenShips(selectedShip, ship)).toFixed(2);
                 shipClickable.addEntryElement('DISTANCE: ' + dis);
             }
 		}

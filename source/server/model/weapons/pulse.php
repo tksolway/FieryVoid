@@ -1,10 +1,6 @@
 <?php
 
-    class Pulse extends Weapon{
-    
-        function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
-            parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
-        }
+    class Pulse extends Weapon{   
         
         
         public $trailColor = array(190, 75, 20);
@@ -12,7 +8,13 @@
         public $grouping = 20;
         public $rof = 1;
         public $maxpulses = 6;
-        
+        public $priority = 8;
+
+
+        function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
+            $this->shots = $this->maxpulses;
+            parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
+        }
 
         public function setSystemDataWindow($turn){
 
@@ -20,7 +22,7 @@
             $this->data["Damage type"] = "Standard";
             $this->data["Grouping range"] = $this->grouping + "%";
             $this->data["Max pulses"] = $this->maxpulses;
-            $this->data["Pulses"] = '1-5';
+            $this->data["Pulses"] = 'D 5';
             
             parent::setSystemDataWindow($turn);
         }
@@ -98,7 +100,6 @@
 
         }
         */
-    
     }
 
     class EnergyPulsar extends Pulse{
@@ -113,6 +114,7 @@
         public $trailLength = 12;
         public $grouping = 25;
         public $maxpulses = 3;
+        public $priority = 5;
 
         public $loadingtime = 2;
         
@@ -124,6 +126,14 @@
         function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
             parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
         }
+
+
+        public function setSystemDataWindow($turn){
+            
+            parent::setSystemDataWindow($turn);
+            $this->data["Pulses"] = 'D 2';
+        }
+
         
         protected function getPulses($turn)
         {
@@ -150,9 +160,10 @@
         
         public $loadingtime = 1;
         public $intercept = 2;
+        public $priority = 2;
         
         public $rangePenalty = 2;
-        public $fireControl = array(3, 2, 1); // fighters, <mediums, <capitals 
+        public $fireControl = array(3, 20, 10); // fighters, <mediums, <capitals 
         
         function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
             parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
@@ -184,7 +195,12 @@
         function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
             parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
         }
-        
+
+        public function setSystemDataWindow($turn){            
+            parent::setSystemDataWindow($turn);
+            $this->data["Pulses"] = 'D 3';            
+        }
+
         protected function getPulses($turn)
         {
             return Dice::d(3);
@@ -207,6 +223,7 @@
         public $trailLength = 10;
         
         public $loadingtime = 1;
+        public $priority = 7;
         
         public $rangePenalty = 2;
         public $fireControl = array(4, 3, 3); // fighters, <mediums, <capitals 
@@ -235,6 +252,7 @@
         public $rof = 2;
         
         public $loadingtime = 2;
+        public $priority = 5;
         
         public $rangePenalty = 1;
         public $fireControl = array(1, 3, 4); // fighters, <mediums, <capitals 
@@ -263,6 +281,7 @@
         public $projectilespeed = 20;
         public $animationExplosionScale = 0.20;
         public $rof = 2;
+        public $priority = 8;
         
         public $loadingtime = 3;
         
@@ -334,9 +353,10 @@
         public $rof = 2;
         public $maxpulses = 7;
         public $grouping = 15;
+        public $priority = 5;
 
         public $loadingtime = 1;
-	public $normalload = 2;
+    	public $normalload = 2;
 
         public $rangePenalty = 1;
         public $fireControl = array(2, 3, 4); // fighters, <mediums, <capitals
@@ -426,7 +446,8 @@
         public $grouping = 0;
 
         public $loadingtime = 2;
-	public $normalload = 2;
+        public $normalload = 2;
+        public $priority = 5;
         
         public $calledShotMod = -4;
 
@@ -457,7 +478,7 @@
             unset($this->data["Max pulses"]);
         }
         
-        public function getDamage($fireOrder){ return 10 - $this->dp; }
+        public function getDamage($fireOrder){ return 5 - $this->dp; }
  
         public function setMinDamage()
         {
@@ -513,7 +534,8 @@
 
         protected function getPulses($turn)
         {
-            return 3;
+            return 1;
+         //   return 3;
         }
     }
 

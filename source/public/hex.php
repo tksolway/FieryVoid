@@ -28,7 +28,7 @@
     <link href="styles/tactical.css" rel="stylesheet" type="text/css">
     <link href="styles/shipwindow.css" rel="stylesheet" type="text/css">
 	<link href="styles/confirm.css" rel="stylesheet" type="text/css">
-	<link href="styles/helper.css" rel="stylesheet" type="text/css">
+<!--	<link href="styles/helper.css" rel="stylesheet" type="text/css">-->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
     <script src="client/lib/jquery-ui-1.8.15.custom.min.js"></script>
     <script>
@@ -52,7 +52,7 @@
         
             
     </script>
-	<script src="client/helper.js"></script>
+<!--	<script src="client/helper.js"></script>-->
 	<script src="client/UI/botPanel.js"></script>
     <script src="client/hexgrid.js"></script>
     <script src="client/gamedata.js"></script>
@@ -352,13 +352,13 @@
         </div>
     </div>
     
-        <div id="globalhelp" class="ingamehelppanel">
+<!--        <div id="globalhelp" class="ingamehelppanel">
         <?php
         	$messagelocation='hex.php';
         	$ingame=true;
         	include('helper.php');
         ?>
-        </div>
+        </div>-->
     
     
     
@@ -479,7 +479,7 @@
 		<div class="header"><span class="header">ASSIGN THRUST</span></div>
 		<table class="frontcontainer">
 			<tr>
-			<td><div class="system slot_3">
+                        <td><div class="system slot_3">
 				
 				<div class="icon">
 					<span class="efficiency value"></span>
@@ -526,7 +526,7 @@
 					<div class="button2"></div>
 
 			</div></td>
-			
+
 			</tr>
 		</table>
 		
@@ -638,6 +638,18 @@
 		
 		<table class="aftcontainer">
 			<tr>
+			<td><div class="system slot_5">
+				
+				<div class="icon">
+					<span class="efficiency value"></span>
+					<div class="iconmask" oncontextmenu="botPanel.onThrusterContextMenu(this);return false;"></div>
+				</div>
+
+					<div class="button1"></div>
+					<div class="button2"></div>
+
+			</div></td>
+
 			<td><div class="system slot_3">
 				
 				<div class="icon">
@@ -686,6 +698,18 @@
 
 			</div></td>
 			
+			<td><div class="system slot_6">
+				
+				<div class="icon">
+					<span class="efficiency value"></span>
+					<div class="iconmask" oncontextmenu="botPanel.onThrusterContextMenu(this);return false;"></div>
+				</div>
+
+					<div class="button1"></div>
+					<div class="button2"></div>
+
+			</div></td>
+
 			</tr>
 		</table>
 		
@@ -721,9 +745,9 @@
         <div id="globalChatTab" data-select="#globalchat" class="logUiEntry">
             <span>GLOBAL CHAT</span>
         </div>
-        <div id="settingsTab" data-select="#settings" class="logUiEntry">
+<!--        <div id="settingsTab" data-select="#settings" class="logUiEntry">
             <span>SETTINGS</span>
-        </div>
+        </div>-->
     </div>
     <div id="log" class="logPanelEntry">
 
@@ -748,7 +772,7 @@
         ?>
     </div>
  
-    <div id="settings" class="logPanelEntry" style="display:none;">
+<!--    <div id="settings" class="logPanelEntry" style="display:none;">
         <div id="helphide" class="helphide">
         <span title="Show or Hide Vir to help you">
         <img id="helphideimg" src="img/greyvir.jpg" height="30" width="30">	
@@ -761,7 +785,7 @@
         <span id="autocommittext" class="autocommittext">COMMIT</span>
         </span>
         </div>
-    </div>
+    </div>-->
         
     <div class="fleetlistentry">
         <div class="fleetheader">
