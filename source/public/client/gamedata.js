@@ -449,24 +449,38 @@ gamedata = {
         
         // To be done before phase 3, so that GravMines can be calculated.
         ballistics.initBallistics();
-        
+
+        // plopje
+        if(gamedata.gamephase == 3 && gamedata.waiting){
+            console.log("I am here!");
+        }
+
         if (gamedata.gamephase == 3 && gamedata.waiting == false){
+            console.log("*********** Phase 3! **************")
             UI.shipMovement.hide();
             ew.RemoveEWEffects();
             
             // check if previous turn wasn't a WeaponBasedMovementTurn
             // If so, don't animate the ships, just the WeaponBasedMovements
             if(gamedata.getLastPhase() != 31){
+                console.log("1: lastphase not 31");
                 animation.setAnimating(animation.animateShipMoves,
                     function(){
                         infowindow.informPhase(5000, null);
+
+                        console.log("2");
     
                         effects.displayAllWeaponBasedMovementFire(function(){
                         
                         animation.setAnimating(animation.animateShipGravMoves,
                             function(){
+
+                                animation.animationLoop();
+
+                                console.log("3");
                             
                             if (gamedata.waiting == false){
+                                console.log("4");
                                 for (var i in gamedata.ships){
                                     var ship = gamedata.ships[i];
                                     if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
@@ -480,6 +494,7 @@ gamedata = {
                     });
                 });
             }else{
+                console.log("1: lastphase was 31");
                 // TODO: no working code in this else branch.
                 // TODO when a firing phase for movement influencing weapons
                 // are implemented besides the grav mines.

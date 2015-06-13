@@ -481,10 +481,6 @@ window.shipManager = {
                 continue;
             }
             
-            if(animation.gravMovesAnimated){
-                console.log("already animated");
-            }
-            
             movement = ship.movement[i];
 
             if (movement.animated == true)
