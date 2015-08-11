@@ -67,7 +67,7 @@
                         && ($ship->faction == "Centauri")
                         && ($this->userid == $ship->userid)
                         && ($ship instanceof PrimusMaximus)
-                        && ($this != $ship)){
+                        && ($this->id != $ship->id)){
                     return ($this->iniativebonus+5);
                 }
             }
@@ -80,14 +80,14 @@
 
             if($gamedata->turn > 0 && $gamedata->phase >= 0 ){
                 $pixPos = $this->getCoPos();
-                $ships = $gamedata->getShipsInDistance($pixPos, ((8*mathlib::$hexWidth) + 1));
+                $ships = $gamedata->getShipsInDistance($pixPos, ((9*mathlib::$hexWidth) + 1));
 
                 foreach($ships as $ship){
                     if( !$ship->isDestroyed()
                             && ($ship->faction == "Dilgar")
                             && ($this->userid == $ship->userid)
                             && ($ship->shipSizeClass == 3)
-                            && ($this != $ship)){
+                            && ($this->id != $ship->id)){
                                 $cnc = $ship->getSystemByName("CnC");
                                 $bonus = $cnc->output;
                                 if ($bonus > $mod){
@@ -106,8 +106,10 @@
                     && ($ship->faction == "Yolu")
                     && ($this->userid == $ship->userid)
                     && ($ship instanceof Udran)
-                    && ($this != $ship)){
-                    return ($this->iniativebonus+5);
+                    && ($this->id != $ship->id)){
+                        $cnc = $ship->getSystemByName("CnC");
+                        $bonus = $cnc->output;
+                        return ($this->iniativebonus+$bonus*5);
                 }
             }
 		return $this->iniativebonus;
@@ -170,6 +172,8 @@
             $i = sizeof($this->systems);
             $system->setId($i);
             $system->location = $loc;
+
+
             $this->systems[$i] = $system;
             
             if ($system instanceof Structure)
@@ -433,6 +437,23 @@
         
         }
         
+
+        public function getHexPos(){
+        
+            $movement = null;
+            if (!is_array($this->movement)){
+                return array("x"=>0, "y"=>0);
+            }
+            foreach ($this->movement as $move){
+                $movement = $move;
+            }
+            debug::log($this->phpclass);
+            debug::log($movement->x."_".$movement->y);
+            return array($movement->x, $movement->y);
+        }
+
+
+
         public function getPreviousCoPos(){
             $pos = $this->getCoPos();
             
@@ -596,13 +617,19 @@
                 $location = 4;
             }else if ($rolled && $location == 4){
                 $location = 3;
-            }   
-            
+            }
+
+
             if ($location != 0){
-                if ((($this instanceof MediumShip && Dice::d(20)>17 ) || Dice::d(10)>9) 
-					&& !$weapon->flashDamage){
-                    return 0;
-                }
+                if ((($this instanceof MediumShip && Dice::d(20)>17 ) || Dice::d(10)>9) && !$weapon->flashDamage){
+                    if ($weapon instanceof ImprovedBlastLaser){
+                        debug::log("ding");
+                        $loc = array();
+                        $loc[] = -1;
+                        $loc[] = $location;
+                        return $loc;
+                    }
+                }   
                     
                 $structure = $this->getStructureSystem($location);
                 if ($structure != null && $structure->isDestroyed($turn-1))
@@ -625,7 +652,6 @@
         
         public function getFireControlIndex(){
               return 2;
-               
         }
         
         public function isDestroyed($turn = false){
@@ -645,8 +671,7 @@
             return false;
         }
         
-        public function isDisabled()
-        {
+        public function isDisabled(){
             if ($this->isPowerless())
                 return true;
             
@@ -685,15 +710,19 @@
         {  
             $system = null;
             
-            if ($fire->calledid != -1){
+            if ($fire->calledid != -1)
                 $system = $this->getSystemById($fire->calledid);
-            }
             
             if ($system != null && !$system->isDestroyed())
                 return $system;
         
             if ($location === null)
                 $location = $this->getHitSection($pos, $shooter, $fire->turn, $weapon);
+
+            if (is_array($location)){
+                $system = $this->getStructureByIndex($system[1]);
+                return $system;
+            }
             
             $systems = array();
             $totalStructure = 0;
@@ -911,8 +940,7 @@
         {
             $orders = array();
             
-            foreach ($this->systems as $system)
-            {
+            foreach ($this->systems as $system){
                 $orders = array_merge($orders, $system->getFireOrders());
             }
             

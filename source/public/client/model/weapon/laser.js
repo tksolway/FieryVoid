@@ -63,3 +63,33 @@ var ImprovedNeutronLaser = function(json, ship)
 }
 ImprovedNeutronLaser.prototype = Object.create( Laser.prototype );
 ImprovedNeutronLaser.prototype.constructor = ImprovedNeutronLaser;
+
+var LaserLance = function(json, ship)
+{
+    Laser.call( this, json, ship);
+}
+LaserLance.prototype = Object.create( Laser.prototype );
+LaserLance.prototype.constructor = LaserLance;
+
+
+var HeavyLaserLance = function(json, ship)
+{
+    Laser.call( this, json, ship);
+}
+HeavyLaserLance.prototype = Object.create( Laser.prototype );
+HeavyLaserLance.prototype.constructor = HeavyLaserLance;
+
+
+var TacLaser = function(json, ship)
+{
+    Laser.call( this, json, ship);
+}
+TacLaser.prototype = Object.create( Laser.prototype );
+TacLaser.prototype.constructor = TacLaser;
+
+var ImprovedBlastLaser = function(json, ship)
+{
+    Weapon.call( this, json, ship);
+}
+ImprovedBlastLaser.prototype = Object.create( Weapon.prototype );
+ImprovedBlastLaser.prototype.constructor = ImprovedBlastLaser;

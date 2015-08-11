@@ -16,6 +16,7 @@
                 $fire = $candidate->fire;
 
                 $target = $gd->getShipById($fire->targetid);
+          //      debug::log("itnercept for ".$target->phpclass);
 
 
                 if ( $target->isDisabled() && $target->shipSizeClass > 0){
@@ -29,12 +30,17 @@
                 $hitLocation = $target->getHitSection($shooter->getCoPos(), $shooter, $fire->turn, $firingweapon);
                 $armour;
 
-       //         debug::log("intercepting fire from: ".$target->phpclass." versus opposing ".$firingweapon->displayName." from ".$shooter->phpclass);
+        //        debug::log("intercepting fire from: ".$target->phpclass." versus opposing ".$firingweapon->displayName." from ".$shooter->phpclass);
 
                 if ($target->shipSizeClass == -1){
                     $armour = $target->systems[1]->armour[$hitLocation];
                 //    debug::log("flight armour: ".$armour);
 
+                }
+                else if ($target->shipSizeClass == 1){
+                    $structure = $target->getStructureByIndex(0);
+                    $armour = $structure->armour;
+                //    debug::log("MCV armour: ".$armour);
                 }
                 else {
                     $structure = $target->getStructureByIndex($hitLocation);
@@ -46,9 +52,14 @@
                     $armour = 0;
                 } else if ($firingweapon instanceof Plasma){
                     $armour = ceil($armour/2);
+                } else if ($firingweapon instanceof FusionAgitator){                    
+                    $armour = $armour - 3;
                 }
-                                            
-                $damage = ($firingweapon->getAvgDamage() - $armour) * (ceil($firingweapon->shots / 2));
+
+                if ($armour < 0 || !$armour){
+                    $armour = 0;
+                }
+                      
 
                 if ($firingweapon instanceof Raking){
                     $avg = $firingweapon->getAvgDamage();
@@ -56,16 +67,28 @@
                     $totalReduction = floor($armour *  $rakes); //floor to account for ability for rakes to hit same sys, hence NO armour
                     $damage = $avg - $totalReduction;
                 }
+                else {                     
+                   $damage = ($firingweapon->getAvgDamage() - $armour) * (ceil($fire->shots / 2));
+                }
 
-            //    debug::log($firingweapon->displayName.", total estimated dmg: ".$damage.", considering armour of:".$armour);
+
+                //disable interception of low-threat weapons with medium reload weapons
+                if ($damage < 15){
+                    if ($this->weapon->loadingtime > 1){
+                        continue;
+                    }
+                }
+
+            //    debug::log($firingweapon->displayName.", total estimated dmg: ".$damage.", considering armour of:".$armour." and shots: ".(ceil($fire->shots / 2)));
                 $numInter = $firingweapon->getNumberOfIntercepts($gd, $fire);
                 
                 $perc = 0;
+     //               debug::log($this->weapon->displayName." running intercept.");
                 for ($i = 0; $i<$this->weapon->guns;$i++){
-                    $perc += (($this->weapon->intercept*5) - (($numInter+$i)*5));
+                    $perc += (($this->weapon->getInterceptRating($gd->turn)*5) - (($numInter+$i)*5));
                 }
                 $perc *= 0.01;
-                
+
                 if ($perc<=0)
                     $candidate->blocked = 0;
                 else
@@ -77,20 +100,29 @@
             
             if ($best && $best->blocked > 0){
 
-            //    $shooter = $gd->getShipById($best->fire->shooterid);
-             //   $firingweapon = $shooter->getSystemById($best->fire->weaponid);
-              //  debug::log("intercepting: ".$firingweapon->displayName." for ".$best->blocked);
+                $shooter = $gd->getShipById($best->fire->shooterid);
+                $firingweapon = $shooter->getSystemById($best->fire->weaponid);
+        //        debug::log("intercepting: ".$firingweapon->displayName." for a reduction of: ".$perc. " using: ".$this->weapon->displayName);
+
+
+                $interceptor = $target->getSystemById($this->weapon->id);
 
                 for ($i = 0; $i<$this->weapon->guns;$i++){
+                    if ($this->weapon->displayName == "Point Pulsar"){
+            //            debug::log("shots: ".$this->weapon->defaultsShots);
+                    }    
                     $interceptFire = new FireOrder(-1, "intercept", $this->ship->id, $best->fire->id, $this->weapon->id, -1, 
                     $gd->turn, $this->weapon->firingMode, 0, 0, $this->weapon->defaultShots, 0, 0, null, null);
+//                    var_dump($interceptFire);
+
                     $interceptFire->addToDB = true;
-                    $this->weapon->fireOrders[] = $interceptFire;
+                    $interceptor->fireOrders[] = $interceptFire;
                 }
-                
+                if (sizeof($interceptor->fireOrders == 2) && $interceptor->fireOrders[0]->type == "selfIntercept"){
+                    checkForSelfInterceptFire::setFired($interceptor->id, $gd->turn);
+                }
             }
         }
-        
     }
     
     class InterceptCandidate{
@@ -109,6 +141,7 @@
 
 
 class Firing{
+    public $gamedata;
     
     public static function validateFireOrders($fireOrders, $gamedata){
     
@@ -119,8 +152,11 @@ class Firing{
     public static function automateIntercept($gd){
         
         foreach ($gd->ships as $ship){
-            if ($ship->unavailable)
+            if (!$ship instanceof FighterFlight){
+                if($ship->unavailable === true || $ship->isDisabled()){
                 continue;
+                }
+            }              
             
             if ($ship instanceof FighterFlight)
             {
@@ -136,10 +172,9 @@ class Firing{
         
     }
     
-    private static function getFighterIntercepts($gd, $ship)
-    {
+    private static function getFighterIntercepts($gd, $ship){
+
         $intercepts = Array(); 
-        
         foreach($ship->systems as $fighter)
         {
             $exclusiveWasFired = false;
@@ -165,6 +200,10 @@ class Firing{
             
             foreach ($fighter->systems as $weapon)
             {
+                if($weapon instanceof PairedGatlingGun && $weapon->ammunition < 1){
+                    continue;
+                }
+
                 if (self::isValidInterceptor($gd, $weapon) === false){
                     continue;
                 }
@@ -174,7 +213,9 @@ class Firing{
             }
         }
         return $intercepts;
-    }
+
+
+     }
     
     private static function getShipIntercepts($gd, $ship)
     {
@@ -185,6 +226,8 @@ class Firing{
             if (self::isValidInterceptor($gd, $weapon) === false)
                continue;
 
+    //    debug::log($weapon->displayName." intercepts");
+
             $possibleIntercepts = self::getPossibleIntercept($gd, $ship, $weapon, $gd->turn);
             $intercepts[] = new Intercept($ship, $weapon, $possibleIntercepts);
         }
@@ -193,14 +236,19 @@ class Firing{
     
     private static function isValidInterceptor($gd, $weapon)
     {
-
         if (!($weapon instanceof Weapon))
             return false;
 
-        $weapon = $weapon->getWeaponForIntercept();
 
+        $weapon = $weapon->getWeaponForIntercept();
+        
         if (!$weapon)
             return false;
+
+
+        if(property_exists($weapon, "ballisticIntercept")){
+            return false;
+        }
         
         if ($weapon->intercept == 0)
             return false;
@@ -210,10 +258,6 @@ class Firing{
             return false;
         }
 
-        //CHECK IF THIS GUN IS ALREADY FIRING!
-        if ($weapon->firedOnTurn($gd->turn)){
-            return false;
-        }
 
         if ($weapon->isOfflineOnTurn($gd->turn))
             return false;
@@ -221,24 +265,39 @@ class Firing{
         if ($weapon->ballistic)
             return false;
 
-        if ($weapon->getLoadingTime() > 1 || 
-            $weapon->getTurnsloaded() < $weapon->getLoadingTime() || 
-            $weapon->firedOnTurn($gd->turn))
+
+            // not loaded yet
+        if ($weapon->getTurnsloaded() < $weapon->getLoadingTime()){
             return false;
+        }
         
+        if ($weapon->getLoadingTime() > 1){
+            if (isset($weapon->fireOrders[0])){
+                if ($weapon->fireOrders[0]->type != "selfIntercept"){
+                    return false;
+                }
+            } else return false;
+        }
+        
+        if ($weapon->getLoadingTime() == 1 && $weapon->firedOnTurn($gd->turn)){
+            return false;
+        }
         return true;
     }
     
     public static function doIntercept($gd, $ship, $intercepts){
         
-        if (sizeof($intercepts)==0)
+        //returns all valid interceptors as $intercepts
+
+        if (sizeof($intercepts) == 0){
+        //    debug::log($ship->phpclass." has nothing to intercept.");
             return;
+        };
             
         usort ( $intercepts , "self::compareIntercepts" );
         
         foreach ($intercepts as $intercept){
             $intercept->chooseTarget($gd);
-            
         }
     }
     
@@ -276,9 +335,7 @@ class Firing{
                 }
             }
         }
-        
         return $intercepts;
-        
     }
     
     public static function isLegalIntercept($gd, $ship, $weapon, $fire){
@@ -289,8 +346,12 @@ class Firing{
             //Debug::log("Fire is intercept\n");
             return false;
         }
-           
-        
+
+        if ($fire->type=="selfIntercept"){
+            //Debug::log("Fire is intercept\n");
+            return false;
+        }
+
         if ($weapon instanceof DualWeapon)
             $weapon->getFiringWeapon($fire);
         
@@ -320,6 +381,7 @@ class Firing{
          
         $pos = $shooter->getCoPos();   
         $shooterCompassHeading = null;
+
         if ($firingweapon->ballistic){
             $movement = $shooter->getLastTurnMovement($fire->turn);
             $pos = mathlib::hexCoToPixel($movement->x, $movement->y);
@@ -362,13 +424,13 @@ class Firing{
          return false;   
         
     }
-    
+
+
     
     public static function fireWeapons($gamedata){
 
 
-        $ordered = array();
-        $unordered  = array();
+        $fireOrders  = array();
 
         
         foreach ($gamedata->ships as $ship){
@@ -377,29 +439,57 @@ class Firing{
             }
 
             foreach($ship->getAllFireOrders() as $fire){
-                $unordered[] = $fire;
-            }
-        }       
 
-        for ($i = 1; $i < 10; $i++){
-            foreach($unordered as $fire){
+                if ($fire->type === "intercept" || $fire->type === "selfIntercept"){
+                    continue;
+                }
 
-            $ship = $gamedata->getShipById($fire->shooterid);
-            $wpn = $ship->getSystemById($fire->weaponid);
-            $p = $wpn->priority;
+                $weapon = $ship->getSystemById($fire->weaponid);
 
-            if ($p == $i){
-                $ordered[] = $fire;
-                }                        
+         //       debug::log($ship->id."___".$weapon->displayName." fireOrder");
+
+                if ($weapon instanceof Thruster || $weapon instanceof Structure){
+                    debug::log("DING");
+                    debug::log($ship->phpclass);
+                    debug::log($weapon->location);
+                    debug::log($weapon->displayName);
+                    debug::log("DING_2");
+             //       debug::log($weapon->fireOrders[0]);
+                    continue;
+
+                }
+
+                $fire->priority = $weapon->priority;
+
+                $fireOrders[] = $fire;
             }
         }
 
-        foreach ($ordered as $fire){
-            $ship = $gamedata->getShipById($fire->shooterid);
-            $wpn = $ship->getSystemById($fire->weaponid);
-            $p = $wpn->priority;
-       //     debug::log("resolve --- Ship: ".$ship->shipClass.", id: ".$fire->shooterid." wpn: ".$wpn->displayName.", priority: ".$p);
-            self::fire($ship, $fire, $gamedata);
+
+
+        usort($fireOrders, 
+            function($a, $b) use ($gamedata){
+                if ($a->targetid !== $b->targetid){
+                    return $a->targetid - $b->targetid;
+                }
+                else if ($a->priority !== $b->priority){
+                    return $a->priority - $b->priority;
+                }
+                else {
+                    return $a->shooterid - $b->shooterid;
+                }
+            }
+        );
+
+
+
+
+        foreach ($fireOrders as $fire){
+                $ship = $gamedata->getShipById($fire->shooterid);
+                $wpn = $ship->getSystemById($fire->weaponid);
+                $p = $wpn->priority;
+                // debug::log("resolve --- Ship: ".$ship->shipClass.", id: ".$fire->shooterid." wpn: ".$wpn->displayName.", priority: ".$p." versus: ".$fire->targetid);
+                self::fire($ship, $fire, $gamedata);
         }
 
 
@@ -468,13 +558,14 @@ class Firing{
         }
     }
     
+
     
     private static function fire($ship, $fire, $gamedata){
         
 		if ($fire->turn != $gamedata->turn)
 			return;
 			
-		if ($fire->type == "intercept")
+		if ($fire->type == "intercept" || $fire->type == "selfIntercept")
 			return;
 			
 		if ($fire->rolled > 0)
@@ -483,7 +574,6 @@ class Firing{
 		
 		$weapon = $ship->getSystemById($fire->weaponid);
 		
-        debug::log("resolving: ".$ship->shipClass." weapon: ".$weapon->displayName);
 
 		$weapon->fire($gamedata, $fire);
 		

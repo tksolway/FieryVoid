@@ -44,7 +44,32 @@ var MassDriver = function(json, ship)
 MassDriver.prototype = Object.create( Matter.prototype );
 MassDriver.prototype.constructor = MassDriver;
 
+var GaussCannon = function(json, ship)
+{
+    Matter.call( this, json, ship);
+}
+GaussCannon.prototype = Object.create( Matter.prototype );
+GaussCannon.prototype.constructor = GaussCannon;
 
+var HeavyGaussCannon = function(json, ship)
+{
+    Matter.call( this, json, ship);
+}
+HeavyGaussCannon.prototype = Object.create( Matter.prototype );
+HeavyGaussCannon.prototype.constructor = HeavyGaussCannon;
 
+var RapidGatling = function(json, ship)
+{
+    Matter.call( this, json, ship);
+}
+RapidGatling.prototype = Object.create( Matter.prototype );
+RapidGatling.prototype.constructor = RapidGatling;
+
+var PairedGatlingGun = function(json, ship)
+{
+    Matter.call( this, json, ship);
+}
+PairedGatlingGun.prototype = Object.create( Matter.prototype );
+PairedGatlingGun.prototype.constructor = PairedGatlingGun;
 
 

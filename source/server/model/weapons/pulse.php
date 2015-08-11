@@ -12,7 +12,6 @@
 
 
         function __construct($armour, $maxhealth, $powerReq, $startArc, $endArc){
-            $this->shots = $this->maxpulses;
             parent::__construct($armour, $maxhealth, $powerReq, $startArc, $endArc);
         }
 
@@ -23,6 +22,8 @@
             $this->data["Grouping range"] = $this->grouping + "%";
             $this->data["Max pulses"] = $this->maxpulses;
             $this->data["Pulses"] = 'D 5';
+
+            $this->defaultShots = $this->maxpulses;
             
             parent::setSystemDataWindow($turn);
         }
@@ -153,10 +154,11 @@
         public $animation = "trail";
         public $trailLength = 12;
         public $animationWidth = 4;
-        public $projectilespeed = 25;
+        public $projectilespeed = 16;
         public $animationExplosionScale = 0.10;
-        public $rof = 1;
+        public $rof = 3;
         public $grouping = 25;
+        public $maxpulses = 6;
         
         public $loadingtime = 1;
         public $intercept = 2;
@@ -478,7 +480,9 @@
             unset($this->data["Max pulses"]);
         }
         
-        public function getDamage($fireOrder){ return 5 - $this->dp; }
+        public function getDamage($fireOrder){
+            return 10 - $this->dp;
+        }
  
         public function setMinDamage()
         {
@@ -534,8 +538,7 @@
 
         protected function getPulses($turn)
         {
-            return 1;
-         //   return 3;
+            return 3;
         }
     }
 

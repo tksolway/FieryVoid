@@ -158,9 +158,14 @@ class Manager{
         return $list;
     }
     
+    public static function getAllFactions(){
+    	return ShipLoader::getAllFactions();
+    }
+    
     public static function getAllShips(){
         
-        return ShipLoader::getAllShips();
+        //return ShipLoader::getAllShips();
+        return array();
     }
     
     public static function canCreateGame($userid){
@@ -237,6 +242,7 @@ class Manager{
     public static function updateAmmoInfo($shipid, $systemid, $gameid, $firingmode, $ammoAmount){
         self::$dbManager->updateAmmoInfo($shipid, $systemid, $gameid, $firingmode, $ammoAmount);
     }
+
     
     public static function getTacGamedataJSON($gameid, $userid, $turn, $phase, $activeship){
         
@@ -266,11 +272,13 @@ class Manager{
             
     public static function submitTacGamedata($gameid, $userid, $turn, $phase, $activeship, $ships, $status, $slotid = 0){
         try {
-            //file_put_contents('/tmp/fierylog', "Gameid: $gameid submitTacGamedata ships:". var_export($ships, true) ."\n\n", FILE_APPEND);
+        
+            //    file_put_contents('/tmp/fierylog', "Gameid: $gameid submitTacGamedata ships:". var_export($ships, true) ."\n\n", FILE_APPEND);
             self::initDBManager();  
             $starttime = time();
             
-            $ships = self::getShipsFromJSON($ships);
+//             $ships = self::getShipsFromJSON($ships);
+            $ships = self::getShipsFromJSON($ships, $gameid);
             
             if (sizeof($ships)==0)
 				throw new Exception("Gamedata missing");
@@ -350,7 +358,7 @@ class Manager{
         
     }
     
-    private static function handleBuying(  $ships, $gamedata, $slotid ){
+    private static function handleBuying( $ships, $gamedata, $slotid ){
     
         $seenSlots = array();
         foreach($gamedata->slots as $slot)
@@ -370,19 +378,41 @@ class Manager{
                 if ($ship->userid == $gamedata->forPlayer){
                     $id = self::$dbManager->submitShip($gamedata->id, $ship, $gamedata->forPlayer);
                     
-                    // Check if ship uses ammo
+                    // Check if ship uses variable flight size
                     if($ship instanceof FighterFlight){
-                       foreach($ship->systems as $fighterIndex=>$fighter){
-                           foreach($fighter->systems as $systemIndex=>$fighterSys){
-                               if(isset($fighterSys->missileArray)){
-                                   // this system has a missileArray. It uses ammo
-                                   foreach($fighterSys->missileArray as $firingMode=>$ammo){
-                                       self::$dbManager->submitAmmo($id, $fighterSys->id, $gamedata->id, $firingMode, $ammo->amount);
+                        self::$dbManager->submitFlightSize($gamedata->id, $id, $ship->flightSize);
+
+                        $firstFighter = $ship->systems[1];
+                        $ammo = false;
+
+                        foreach ($firstFighter->systems as $weapon){
+                            if(isset($weapon->missileArray)){
+                                $ammo = $weapon->missileArray[1]->amount;
+                                break;
+                            }
+                        }
+
+                        if ($ammo){
+                            foreach($ship->systems as $fighter){
+                                foreach ($fighter->systems as $weapon){
+                                    if(isset($weapon->missileArray)){
+                                        $weapon->missileArray[1]->amount = $ammo;
+                                        self::$dbManager->submitAmmo($id, $weapon->id, $gamedata->id, $weapon->firingMode, $ammo);
+                                    }
+                                }
+                            }
+                        }
+                        else if ($ship instanceof Templar){
+                            foreach($ship->systems as $fighter){
+                               foreach($fighter->systems as $weapon){
+                                   if($weapon instanceof PairedGatlingGun){
+                                       self::$dbManager->submitAmmo($id, $weapon->id, $gamedata->id, $weapon->firingMode, $weapon->ammunition);
                                    }
                                }
                            }
-                       } 
-                    }else{
+                        }
+                    }
+                    else{
                        foreach($ship->systems as $systemIndex=>$system){
                                if(isset($system->missileArray)){
                                    // this system has a missileArray. It uses ammo
@@ -571,14 +601,12 @@ class Manager{
             }
             
             if (TacGamedata::$currentPhase > 0){
-                foreach ($gamedata->ships as $ship)
-                {
-                    foreach ($ship->systems as $system)
-                    {
+                foreach ($gamedata->ships as $ship){
+                    foreach ($ship->systems as $system){
                         $system->onAdvancingGamedata($ship);
                     }
                 }
-
+                
                 self::$dbManager->updateSystemData(SystemData::$allData);
             }
             self::$dbManager->endTransaction(false);
@@ -654,10 +682,10 @@ class Manager{
                 $y = (($t-1)/2)*-1;
             }
             
-            $x = -50;
+            $x = -30;
             
             if ($ship->team == 2){
-                $x=50;
+                $x=30;
             }
             
             
@@ -796,7 +824,10 @@ class Manager{
             
         self::generateIniative($gamedata);
         self::$dbManager->updateGamedata($gamedata);
-        
+
+       // if ($gamedata->turn > 1){
+         //   self::checkRegen($gamedata);
+        //}   
                
         $servergamedata = self::$dbManager->getTacGamedata($gamedata->forPlayer, $gamedata->id);
         
@@ -805,6 +836,29 @@ class Manager{
             self::$dbManager->submitMovement($servergamedata->id, $ship->id, $servergamedata->turn, $movement, true);
         }
             
+    }
+
+    private static function checkRegen($gamedata){
+        foreach ($gamedata->ships as $ship){
+            if ($ship->isDisabled()){
+                continue;
+            }
+            else if ($ship->selfRegen === true){
+                foreach ($ship->systems as $system){
+                    if ($system instanceof Structure || $system instanceof Thruster){
+                        if ($system->getRemainingHealth() < $system->maxhealth){
+
+                            $damageEntry = new DamageEntry(-1, $ship->id, -1, $gamedata->turn, $system->id, -2, $system->armour, 0, 0, false, "");
+                            $damageEntry->updated = true;
+                            $system->damage[] = $damageEntry;
+                            Debug::log("regen hit");
+                        }
+                    }
+                    else {
+                    }
+                }
+            }
+        }
     }
     
     private static function generateIniative($gamedata){
@@ -833,7 +887,8 @@ class Manager{
         self::$dbManager->submitIniative($gamedata->id, $gamedata->turn, $gamedata->ships);
     }
     
-    private static function getShipsFromJSON($json){
+    private static function getShipsFromJSON($json, $gameid){
+
         $ships = array();
         $array = json_decode($json, true);
         if (!is_array($array))
@@ -896,13 +951,20 @@ class Manager{
             }
             
             
-            $ship = new $value["phpclass"]($value["id"], $value["userid"], $value['name'], $value["slot"]);
+            $ship = new $value["phpclass"]($value["id"], $value["userid"], $value['name'], $value["slot"]);            
             $ship->setMovements($movements);    
             $ship->EW = $EW;
+
+            if ($ship instanceof FighterFlight){
+                $ship->flightSize = $value["flightSize"];  
+                $ship->populate();
+            }
+
             
             foreach($value["systems"] as $i=>$system){
                 //$sys = $ship->getSystemById($system['id']);
                 $sys = $ship->getSystemById($i);
+
                 
                 if (isset($system["power"]) &&is_array($system["power"]))
                 {
@@ -918,8 +980,7 @@ class Manager{
                 if (isset($system["fireOrders"]) &&is_array($system["fireOrders"]))
                 {
                     $fires = Array();
-                    foreach($system["fireOrders"] as $i=>$fo)
-                    {
+                    foreach($system["fireOrders"] as $i=>$fo){
                         $fireOrder = new FireOrder(-1, $fo["type"], $fo["shooterid"], $fo["targetid"], $fo["weaponid"], $fo["calledid"], $fo["turn"], $fo["firingMode"], 0, 0, $fo["shots"], 0, 0, $fo["x"], $fo["y"]);
                         if (isset($sys)){
                             $fires[] = $fireOrder;
@@ -959,9 +1020,9 @@ class Manager{
                     }
                     
                 }
-            
             }
-            
+
+
             $ships[(int)$value["id"]] = $ship;
         }
         

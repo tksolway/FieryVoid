@@ -670,45 +670,46 @@ window.effects = {
         }
 
 
-        var fo = [];
-        var fof = [];
+        var shipFire = [];
+        var fighterFire = [];
 
-        for (var x in gamedata.ships){
-            var ship = gamedata.ships[x];
+        for (var i in gamedata.ships){
+            var ship = gamedata.ships[i];
             
             var fires = weaponManager.getAllFireOrders(ship);
 
 
             for (var y in fires){
                 if (ship.shipSizeClass === -1){
-                    fof.push(fires[y]);
+                    fighterFire.push(fires[y]);
                 }
                 else {
                     var weapon = shipManager.systems.getSystem(ship, fires[y].weaponid);
                     fires[y].priority = weapon.priority;
-                    fo.push(fires[y]);
+                    shipFire.push(fires[y]);
                 }       
             }   
         }
             
-        fo.sort(function(obj1, obj2){
+        shipFire.sort(function(obj1, obj2){
             if(obj1.targetid !== obj2.targetid){
                  return obj1.targetid-obj2.targetid;
             }
-            else {
+            else if (obj1.priority !== obj2.priority){
                 return obj1.priority-obj2.priority; 
             }
+            else return obj1.shooterid - obj2.shooterid;
         });
 
-        for (var x in fof){
-            fo.push(fof[x]);
+        for (var x in fighterFire){
+            shipFire.push(fighterFire[x]);
         }
 
 //        console.log(fo);
 
 
-            for (var z in fo){
-                var fire = fo[z];
+            for (var z in shipFire){
+                var fire = shipFire[z];
 
                 if (fire.turn != gamedata.turn || fire.type=='intercept' || !fire.rolled)
                     continue;
@@ -1218,7 +1219,6 @@ window.effects = {
     },
     
     animateIntercept: function(fire, weapon, tPos, currentlocation, shotPos, succesfull, targethit){
-        
         if (weapon.animation == "laser")
             return;
         
@@ -1250,7 +1250,6 @@ window.effects = {
         
         for (var i in chosens){
             var chosen = chosens[i];
-            
             var shots = 1;
             
             if (!succesfull){

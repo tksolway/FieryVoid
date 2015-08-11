@@ -1,6 +1,7 @@
-
 jQuery(function(){
-	
+   //   $(".iconmask").bind("contextmenu", function(e) {
+    //        e.preventDefault();
+     //   }); 
 });
 
 shipWindowManager = {
@@ -105,6 +106,10 @@ shipWindowManager = {
 	},
     
     bindEvents: function(shipwindow){
+
+
+
+
         $(".close", shipwindow).on("click", shipWindowManager.close);
         $(".system .plus", shipwindow).on("click", shipWindowManager.clickPlus);
         $(".system .minus", shipwindow).on("click", shipWindowManager.clickMinus);
@@ -118,11 +123,13 @@ shipWindowManager = {
 
 	populateShipWindow: function(ship, shipwindow){
 		shipwindow.find(".icon img").attr("src", "./"+ship.imagePath);
-                
+		var thumb = shipwindow.find(".icon img");
+
+
                 if(gamedata.turn != 0){
-                    shipwindow.find(".topbar .value.shipclass").html("");
                     shipwindow.find(".topbar .valueheader.shipclass").html("");
                     shipwindow.find(".topbar .value.name").html(ship.name);
+                    shipwindow.find(".topbar .value.shipclass").html(ship.shipClass);
                 }
                 else{
                     shipwindow.find(".topbar .value.name").html("");
@@ -147,6 +154,32 @@ shipWindowManager = {
             var abilities = Array();
             var notes = Array();
             
+
+			var belowIcon = shipWindow.find(".notes");
+	//		$(belowIcon).addClass("selfIntercept");
+
+			var input = document.createElement("input");
+				input.type = "button";
+				input.value = "Defensive Fire";
+				input.className = "interceptButton";
+				input.className += " interceptDisabled";
+
+			$(input).click(function(){
+				weaponManager.checkSelfIntercept(ship);
+			})
+
+			$(belowIcon).append(input);
+
+			if (gamedata.gamephase == 3 &&
+				ship.userid == gamedata.thisplayer){
+				
+				if (weaponManager.canSelfIntercept(ship)){
+					input.className = "interceptButton";
+					input.className += " interceptEnabled";
+				}
+			}
+
+
             if(ship.agile){
                 abilities.push("&nbsp;Agile ship");
             }
@@ -638,6 +671,7 @@ shipWindowManager = {
             systemwindow.off("mouseover", weaponManager.onWeaponMouseover);
             systemwindow.off("mouseout", weaponManager.onWeaponMouseOut);
             systemwindow.off("click", shipWindowManager.clickSystem);
+            systemwindow.off("contextmenu", shipWindowManager.selectAllGuns);
             
             systemwindow.find(".mode").off("click", shipWindowManager.onModeClicked);
             
@@ -645,7 +679,11 @@ shipWindowManager = {
             systemwindow.find(".on").on("click", shipManager.power.onOnlineClicked);
             systemwindow.on("mouseover", weaponManager.onWeaponMouseover);
             systemwindow.on("mouseout", weaponManager.onWeaponMouseOut);
+
             systemwindow.on("click", shipWindowManager.clickSystem);
+            systemwindow.on("contextmenu", shipWindowManager.selectAllGuns);
+
+
             systemwindow.find(".holdfire").on("click", window.weaponManager.onHoldfireClicked);
             
             systemwindow.find(".mode").on("click", shipWindowManager.onModeClicked);
@@ -750,7 +788,7 @@ shipWindowManager = {
 			"loading",
 			"selected",
 			"firing",
-                        "duofiring",
+            "duofiring",
 			"critical",
 			"canoffline",
 			"offline",
@@ -760,7 +798,8 @@ shipWindowManager = {
 			"overload",
 			"forcedoffline",
             "modes",
-            "ballistic"
+            "ballistic",
+            "selfIntercept"
 		);
 		
 		for (var i in classes){
@@ -853,6 +892,7 @@ setSystemData: function(ship, system, shipwindow){
     
     if (system.weapon){
         var firing = weaponManager.hasFiringOrder(ship, system);
+
         
         // To avoid double overlay of loading icon mask in case of a 
         // duoWeapon in a dualWeapon
@@ -868,7 +908,7 @@ setSystemData: function(ship, system, shipwindow){
             systemwindow.removeClass("selected");
         }
         
-        if (firing && !system.duoWeapon  && !(systemwindow.hasClass("loading"))){
+        if (firing && firing != "self" && !system.duoWeapon  && !(systemwindow.hasClass("loading"))){
             systemwindow.addClass("firing");
             
             if(system.parentId > -1){
@@ -878,10 +918,17 @@ setSystemData: function(ship, system, shipwindow){
                     $(".system_"+system.parentId).addClass("duofiring");
                 }
             }
-            
-        }else{
+        }
+
+        else if (firing == "self"){
+        	systemwindow.addClass("firing");
+        	systemwindow.addClass("selfIntercept");
+        }
+
+        else{
             firing = false;
             systemwindow.removeClass("firing");
+        	systemwindow.removeClass("selfIntercept");
         }
         
         if (system.ballistic){
@@ -1094,9 +1141,61 @@ setSystemData: function(ship, system, shipwindow){
 
 		shipwindow.addClass("assignThrust");
 	},
+
+	selectAllGuns: function(e){
+
+		var array = [];
+
+		e.stopPropagation();
+		var shipwindow = $(".shipwindow").has($(this));
+		var systemwindow = $(this);
+		var ship = gamedata.getShip(shipwindow.data("ship"));
+		var system = shipManager.systems.getSystem(ship, systemwindow.data("id"));
+
+		for (var i = 0; i < ship.systems.length; i++){
+			if (system.displayName === ship.systems[i].displayName){
+				array.push(ship.systems[i]);
+			}
+		}
+
+		var selectedShip = gamedata.getSelectedShip();
+
+		for (var i = 0; i < array.length; i++){
+			var system = array[i];
+
+			if (gamedata.waiting)
+				return
+			
+			if (shipManager.isDestroyed(ship) || shipManager.isDestroyed(ship, system) || shipManager.isAdrift(ship))
+				return;
+						
+			if (system.weapon && selectedShip.id == ship.id){
+				
+				if (gamedata.gamephase != 3 && !system.ballistic)
+					return;
+				
+				if (gamedata.gamephase != 1 && system.ballistic)
+					return;
+			
+				if (weaponManager.isSelectedWeapon(system)){
+					weaponManager.unSelectWeapon(ship, system);
+				}else{
+					weaponManager.selectWeapon(ship, system);
+				}
+				
+			}
+			
+			if (gamedata.isEnemy(ship, selectedShip) 
+				&& gamedata.gamephase == 3 
+				&& gamedata.selectedSystems.length > 0 
+				&& weaponManager.canCalledshot(ship, system))
+			{
+				weaponManager.targetShip(ship, system);
+			}
+		}
+	},
 	
 	clickSystem: function(e){
-
 		e.stopPropagation();
 		var shipwindow = $(".shipwindow").has($(this));
 		var systemwindow = $(this);
@@ -1104,6 +1203,7 @@ setSystemData: function(ship, system, shipwindow){
 		var system = shipManager.systems.getSystem(ship, systemwindow.data("id"));
                 system = shipManager.systems.initializeSystem(system);
                 
+	//	console.log(system);
 		var selectedShip = gamedata.getSelectedShip();
 		
 		if (gamedata.waiting)
@@ -1133,7 +1233,7 @@ setSystemData: function(ship, system, shipwindow){
 			&& gamedata.selectedSystems.length > 0 
 			&& weaponManager.canCalledshot(ship, system))
 		{
-                    weaponManager.targetShip(ship, system);
+			weaponManager.targetShip(ship, system);
 		}
 	
 	},

@@ -12,8 +12,16 @@ class Criticals{
                 continue;
                 
             foreach ($ship->systems as $system){
-				if ($system->isDestroyed())
+
+    			if ($system instanceof MissileLauncher){
+	                if ($system->isDamagedOnTurn($gamedata->turn)){       
+						$crits = $system->testCritical($ship, $gamedata, $crits);
+             	   }
+                }
+
+				if ($system->isDestroyed()){
 					continue;
+				}
 				
 				if ($system instanceof Thruster){
 				

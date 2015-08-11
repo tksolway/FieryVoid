@@ -123,12 +123,10 @@ class DBManager {
 	public function submitShip($gameid, $ship, $userid){
 	
 		try{
-			
 			$sql = "INSERT INTO `B5CGM`.`tac_ship` VALUES(null, $userid, $gameid, '".$this->DBEscape($ship->name)."', '".$ship->phpclass."', 0, 0, 0, 0, 0, $ship->slot)";
-            Debug::log($sql);
-			$id = $this->insert($sql);
-			
-                        return $id;
+            //   Debug::log($sql);
+            $id = $this->insert($sql);
+            return $id;
 			//$sql = "INSERT INTO `B5CGM`.`tac_iniative` VALUES($gameid, $id, 0, 0)";
             //$this->insert($sql);			
 			
@@ -137,6 +135,23 @@ class DBManager {
             throw $e;
         }
 	}
+
+    
+    public function submitFlightSize($gameid, $shipid, $flightSize){
+            try{
+                $sql = "INSERT INTO `B5CGM`.`tac_flightsize` (gameid, shipid, flightsize)
+                VALUES ($gameid, $shipid, $flightSize)";
+
+                $id = $this->insert($sql);
+                Debug::log($sql);
+
+            }catch(Exception $e) {
+                $this->endTransaction(true);
+                throw $e;
+            }
+    }
+
+
 
 	public function submitAmmo($shipid, $systemid, $gameid, $firingMode, $ammoAmount){
 	
@@ -353,8 +368,7 @@ class DBManager {
         return $gameid;
 	}
     
-    public function submitCriticals($gameid, $criticals, $turn){
-        
+    public function submitCriticals($gameid, $criticals, $turn){        
         try {
             
             //print(var_dump($criticals));
@@ -740,7 +754,7 @@ class DBManager {
 
     
 	public function getTacGames($playerid){
-		$games = $this->getTacGame(0, $playerid, false);
+		$games = $this->getTacGame(0, $playerid);
 		if ($games == null)
 			return array();
         
@@ -780,18 +794,25 @@ class DBManager {
         return $gamedata;
     }
     
-    public function getTacGame($gameid, $playerid, $finished = true){
+    public function getTacGame($gameid, $playerid){
 	
 		if ($gameid >0){
+			// gameid is set. We only need that particular one game.
 			$sql = "SELECT * FROM `B5CGM`.`tac_game` where id = $gameid";
-			if (!$finished){
-				$sql .= " AND `status` <> 'FINISHED'";
-			}
 		}else{
-			$sql = "SELECT * FROM `B5CGM`.`tac_game`";
-			if (!$finished){
-				$sql .= " WHERE `status` <> 'FINISHED'";
-			}
+			// gameid is not set. We are looking for all games that might be interesting
+			// for a player.
+			// Only select those games that are either relevant to the current player.
+			// So the ones he is participating in, or those games that are in the lobby
+			// and still have player spots left.
+			$sql = "SELECT * FROM tac_game tg RIGHT JOIN
+		 			(SELECT id
+		 					FROM tac_playeringame pg
+		 					LEFT JOIN tac_game tgs
+		 					on tgs.id = pg.gameid
+		 					WHERE tgs.status <> 'finished' AND (pg.playerid = $playerid OR pg.playerid IS NULL OR pg.playerid = '')
+		 			) AS result1
+	 			ON tg.id = result1.id;";
 		}
 		
 		
@@ -912,8 +933,7 @@ class DBManager {
         return $ship;
     }
     
-    public function getTacShips($gamedata)
-    {
+    public function getTacShips($gamedata){
         
         $starttime = time();  
         $ships = array();
@@ -934,8 +954,14 @@ class DBManager {
             $stmt->bind_result($id, $playerid, $name, $phpclass, $slot);
             $stmt->execute();
             while ($stmt->fetch())
-            {
+            {                
                 $ship = new $phpclass($id, $playerid, $name, $slot);
+            /*    if ($ship instanceof FighterFlight && $ship->superheavy === false){
+                    debug::log("backwards adjust");
+                    $ship->flightSize = 6;
+                    $ship->populate();
+                }
+            */
                 $ship->team = $gamedata->slots[$slot]->team;
                 $ships[] = $ship;
             }
@@ -944,6 +970,8 @@ class DBManager {
         
         $gamedata->setShips($ships);
         
+        $this->getFlightSize($gamedata);
+        $this->flightSizeFix($ships);
         $this->getIniativeForShips($gamedata);
         $this->getMovesForShips($gamedata);
         $this->getEWForShips($gamedata);
@@ -958,6 +986,68 @@ class DBManager {
         
         
     }
+
+/*
+    public function submitFlightSize($gameid, $shipid, $flightSize){
+            try{
+                $sql = "INSERT INTO `B5CGM`.`tac_flightsize` (gameid, shipid, flightsize)
+                VALUES ($gameid, $shipid, $flightSize)";
+
+                $id = $this->insert($sql);
+                Debug::log($sql);
+
+            }catch(Exception $e) {
+                $this->endTransaction(true);
+                throw $e;
+            }
+    }
+
+*/
+
+    
+    public function getFlightSize($gamedata){
+        $stmt = $this->connection->prepare(
+            "SELECT 
+                shipid, flightsize
+            FROM 
+                tac_flightsize
+            WHERE 
+                gameid = ?"
+            );
+
+        if ($stmt){
+            $stmt->bind_param('i', $gamedata->id);
+            $stmt->bind_result($shipid, $flightsize);
+            $stmt->execute();
+        /*    $stmt->store_result();
+
+            $num = $stmt->num_rows;
+
+            if ($num === 0){
+                for ($))
+            }
+*/
+            while($stmt->fetch()){
+                $flight = $gamedata->getShipById($shipid);
+                $flight->flightSize = $flightsize;
+                $flight->populate();
+            }
+
+            $stmt->close();
+        }
+    }
+
+    public function flightSizeFix($ships){
+        foreach ($ships as $ship){
+            if ($ship instanceof FighterFlight && !$ship->superheavy){
+                if ($ship->flightSize == 1){
+                    $ship->flightSize = 6;
+                    $ship->populate();
+                }
+            }
+        }
+    }
+
     
     private function getIniativeForShips($gamedata){
         
@@ -974,15 +1064,15 @@ class DBManager {
             "
         );
 
-        if ($stmt)
-        {
+        if ($stmt){
             $stmt->bind_param('ii', $gamedata->id, $gamedata->turn);
             $stmt->bind_result($iniative, $shipid);
             $stmt->execute();
-            while ($stmt->fetch())
-            {
+
+            while ($stmt->fetch()){
                 $gamedata->getShipById($shipid)->iniative = $iniative;
             }
+
             $stmt->close();
         }
         
@@ -1213,6 +1303,8 @@ class DBManager {
     public function getSystemDataForShips($gamedata)
     {
         $loading = array();
+
+
         $stmt = $this->connection->prepare(
             "SELECT 
                 data, shipid, systemid, subsystem
@@ -1235,9 +1327,7 @@ class DBManager {
 
             while( $stmt->fetch())
             {
-                $gamedata->getShipById($shipid)->getSystemById($systemid)->setSystemData(
-                    $data, $subsystem
-                );
+                $gamedata->getShipById($shipid)->getSystemById($systemid)->setSystemData($data, $subsystem);
             }
             $stmt->close();
         }
@@ -1266,11 +1356,13 @@ class DBManager {
             while( $stmt->fetch())
             {
                 // This is a dual/duoweapon or a fightersystem
+           //     debug::log("system: ".$systemid. "___".$gamedata->getShipById($shipid)->getSystemById($systemid)->displayName);
                 $gamedata->getShipById($shipid)->getSystemById($systemid)->setAmmo($firingmode, $ammo);
             }
             $stmt->close();
         }
     }
+
     
     public function updateAmmoInfo($shipid, $systemid, $gameid, $firingmode, $ammoAmount){
         try {
@@ -1296,6 +1388,7 @@ class DBManager {
             throw $e;
         }
     }
+
     
     public function getFireOrdersForShips($gamedata)
     {
@@ -1310,8 +1403,7 @@ class DBManager {
                 turn = ?"
         );
 
-        if ($stmt)
-        {
+        if ($stmt){
             $stmt->bind_param('ii', $gamedata->id, $gamedata->turn);
             $stmt->execute();
             $stmt->bind_result(

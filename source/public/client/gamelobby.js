@@ -11,6 +11,7 @@ window.gamedata = {
 	maxpoints:0,
 	status: "LOBBY",
     selectedSlot:null,
+    allShips: null,
 
 	canAfford: function(ship){
 
@@ -116,59 +117,103 @@ window.gamedata = {
         return (ship.userid == gamedata.thisplayer);
     },
 
-                orderShipListOnName: function(shipList){
-                    var swapped = true;
-                    
-                    for(var x=1; x< shipList.length && swapped; x++){
-                        swapped = false;
-                        
-                        for(var y=0; y < shipList.length - x; y++){
-                            if(shipList[y+1].shipClass < shipList[y].shipClass){
-                                var temp = shipList[y];
-                                shipList[y] = shipList[y+1];
-                                shipList[y+1] = temp;
-                                swapped = true;
-                            }
-                        }
-                    }
-                },
+    orderShipListOnName: function(shipList){
+        var swapped = true;
         
-	parseShips: function(json){
-
-
+        for(var x=1; x< shipList.length && swapped; x++){
+            swapped = false;
+            
+            for(var y=0; y < shipList.length - x; y++){
+                if(shipList[y+1].shipClass < shipList[y].shipClass){
+                    var temp = shipList[y];
+                    shipList[y] = shipList[y+1];
+                    shipList[y+1] = temp;
+                    swapped = true;
+                }
+            }
+        }
+    },
+    
+    orderStringList: function(stringList){
+        var swapped = true;
         
-		gamedata.setShipsFromJson(json);
-                
-                for (var i in gamedata.allShips){
-			var faction = gamedata.allShips[i];
-                        
-                        this.orderShipListOnName(faction);
-                        
-			var group = $('<div class="'+i+' faction shipshidden" data-faction="'+i+'"><div class="factionname name"><span>'+i+ '</span><span class="tooltip">(click to expand)</span></div>')
-                .appendTo("#store");
+        for(var x=1; x< stringList.length && swapped; x++){
+            swapped = false;
+            
+            for(var y=0; y < stringList.length - x; y++){
+                if(stringList[y+1] < stringList[y]){
+                    var temp = stringList[y];
+                    stringList[y] = stringList[y+1];
+                    stringList[y+1] = temp;
+                    swapped = true;
+                }
+            }
+        }
+    },
+    
+    parseFactions: function(jsonFactions){
+		this.orderStringList(jsonFactions);
+		var factionList = new Array();
 
-                group.find('.factionname').on("click", this.expandFaction);
+    	for (var i in jsonFactions){
+			var faction = jsonFactions[i];
+			
+			factionList[faction] = new Array();
+			
+			var group = $('<div class="'+ faction +' faction shipshidden listempty" data-faction="'+ faction +'"><div class="factionname name"><span>'+ faction + '</span><span class="tooltip">(click to expand)</span></div>')
+            .appendTo("#store");
 
-			for (var index = 0; index < faction.length; index++){
-				var ship = faction[index];
-				var h = $('<div oncontextmenu="gamedata.onShipContextMenu(this);return false;" class="ship" data-id="'+ship.id+'" data-faction="'+i+'" data-shipclass="'+ship.phpclass+'"><span class="shiptype">'+ship.shipClass+'</span><span class="pointcost">'+ship.pointCost+'p</span><span class="addship clickable">Add to fleet</span></div>');
-				h.appendTo("."+i+".faction");
+            group.find('.factionname').on("click", this.expandFaction);
+    	}
+    	
+    	gamedata.allShips = factionList;
+    },
+    
+	parseShips: function(jsonShips){
+		
+		for (var faction in jsonShips){
+			var shipList = jsonShips[faction];
+			
+			this.orderShipListOnName(shipList);
+			gamedata.setShipsFromFaction(faction, shipList);
+			
+//			
+//	        for (var i in shipList)
+//	        {
+//	            var ship = shipList[i];
+//	            gamedata.ships[faction] = new Ship(ship);
+//	        }
+	
+			for (var index = 0; index < jsonShips[faction].length; index++){
+				var ship = shipList[index];
+				var h = $('<div oncontextmenu="gamedata.onShipContextMenu(this);return false;" class="ship" data-id="'+ship.id+'" data-faction="'+ faction +'" data-shipclass="'+ship.phpclass+'"><span class="shiptype">'+ship.shipClass+'</span><span class="pointcost">'+ship.pointCost+'p</span><span class="addship clickable">Add to fleet</span></div>');
+	            if (ship.faction == "The Lion"){
+	                h.appendTo(".The" + ".Lion" +".faction");
+	            } else h.appendTo("."+ faction +".faction");
 			}
+	
+			$(".addship").bind("click", this.buyShip);
 		}
-
-
-
-		$(".addship").bind("click", this.buyShip);
-
 	},
 
     expandFaction: function(event)
     {
-     //   console.log("clicked");
         var clickedElement = $(this);
+        var faction = clickedElement.parent().data("faction");
+        
+        if(clickedElement.parent().hasClass("shipshidden")){
+            if(clickedElement.parent().hasClass("listempty")){
+		        window.ajaxInterface.getShipsForFaction(faction, function(factionShips){
+		        	gamedata.parseShips(factionShips);
+		        });
+		        
+		        clickedElement.parent().removeClass("listempty")
+            }
+        }
+
         clickedElement.parent().toggleClass("shipshidden");
     },
-
+    
     goToWaiting: function(){
         
     },
@@ -341,16 +386,19 @@ window.gamedata = {
                     window.confirm.error("You cannot afford that ship!", function(){});
                     return;
                 }
-                
+
+                if (ship.flight){
+					var flightSize = $(".fighterAmount").html();
+					if (!flightSize){
+						flightSize = 1;
+					}
+						ship.flightSize = Math.floor(flightSize);
+                }
+
+
                 if($(".confirm .selectAmount").length > 0){
                     if(ship.flight){
-                        // first get the number of fighters in the flight
-                        var nrOfFighters = 0;
-                        
-                        for(var i in ship.systems){
-                            nrOfFighters++;
-                        }
-                        
+
                         // and get the amount of launchers on a fighter
                         var nrOfLaunchers = 0;
 
@@ -364,15 +412,20 @@ window.gamedata = {
                         
                         // get all selections of missiles
                         var missileOptions = $(".confirm .selectAmount");
+                    //    console.log(missileOptions);
                         
                         for(var k=0; k < missileOptions.length; k++){
                             var firingMode = $(missileOptions[k]).data("firingMode");
+                     //       console.log(firingMode);
 
                             // divide the bought missiles over the missileArrays
                             var boughtAmount = $(".confirm .selectAmount." + firingMode).data("value");
+                     //       console.log(boughtAmount);
+
                             // perLauncher should always get you an integer as result. The UI handles
                             // buying of missiles that way.
-                            var perLauncher = boughtAmount/(nrOfFighters*nrOfLaunchers);
+                            var perLauncher = boughtAmount;
+
 
                             for(var i in ship.systems){
                                 var fighter = ship.systems[i];
@@ -518,26 +571,16 @@ window.gamedata = {
         return null;
     },
             
-    setShipsFromJson: function(jsonShips)
+    setShipsFromFaction: function(faction, jsonShips)
     {
-        //gamedata.ships = Array();
+        gamedata.allShips[faction] = new Array();
         
-        var factions = Array();
-        for (var f in jsonShips)
+        for (var i in jsonShips)
         {
-            var faction = jsonShips[f];
-            factions[f] = Array();
-            
-            for (var i in faction)
-            {
-                var ship = faction[i];
-                factions[f][i] = new Ship(ship);
-            }
+            var ship = jsonShips[i];
+            gamedata.allShips[faction][i] = new Ship(ship);
         }
-        
-        gamedata.allShips = factions; 
     },
-
 
 }
 

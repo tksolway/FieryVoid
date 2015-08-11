@@ -23,7 +23,7 @@
 			return $list;
 		}
 		
-		public static function getAllShips(){
+		public static function getAllShips($faction){
 			$names = self::getShipClassnames();
 			$ships = array();
             $count = 0;
@@ -31,14 +31,19 @@
 				if (class_exists($name)){
                     $count++;
 					$ship = new $name($count, 0, "", 0, 0, false, false, array());
+					
+					if($ship->faction != $faction){
+						continue;
+					}
+					
                     foreach ($ship->systems as $system){
                         $system->beforeTurn($ship, 0, 0);
                     }
         
 					if (!isset($ships[$ship->faction])){
 						$ships[$ship->faction] = array();
-						
 					}
+					
 					$ships[$ship->faction][] = $ship;
 				}
 			}
@@ -47,7 +52,24 @@
 		
 		}
 		
-	
+		public static function getAllFactions(){
+			$names = self::getShipClassnames();
+			$factions = array();
+			$count = 0;
+			
+			foreach($names as $name){
+				if (class_exists($name)){
+					$count++;
+					$ship = new $name($count, 0, "", 0, 0, false, false, array());
+				
+					if (!in_array( $ship->faction , $factions )){
+						$factions[] = $ship->faction;
+					}
+				}
+			}
+			
+			return $factions;
+		}
 	}
 	
 	
