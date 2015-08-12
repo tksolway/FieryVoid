@@ -912,7 +912,6 @@ body.phase1 #botPanel .ewentry .button2{
     color:#2f5123;
 }
 
-<<<<<<< HEAD
 #pagecontainer .hexgravminecenter{
     position:absolute;
     z-index:100;
@@ -922,7 +921,6 @@ body.phase1 #botPanel .ewentry .button2{
     z-index:101;
 }
 
-=======
 #iniGui {
     z-index:9999;
     border:1px solid #496791;
@@ -1003,4 +1001,3 @@ body.phase1 #botPanel .ewentry .button2{
     padding-top:10px;
     border-radius: 0px 10px 10px 0px;
 }
->>>>>>> refs/remotes/origin/master
