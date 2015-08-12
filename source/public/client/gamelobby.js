@@ -241,9 +241,6 @@ window.gamedata = {
 			window.location = "hex.php?gameid="+gamedata.gameid;
 		}
 
-
-
-
 		this.createSlots();
 		this.enableBuy();
         this.constructFleetList();

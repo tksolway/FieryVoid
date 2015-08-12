@@ -2,7 +2,6 @@
 
 	class ShipLoader{
 	
-	
 		public static function getShipClassnames(){
 			$dir = dirname(__DIR__) ."/model/ships/";
 			$handle = opendir($dir);

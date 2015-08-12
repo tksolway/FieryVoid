@@ -1,7 +1,6 @@
 <?php ob_start("ob_gzhandler"); 
     include_once 'global.php';
 
-        
     if (!isset($_SESSION["user"]) || $_SESSION["user"] == false){
 		header('Location: index.php');
 //      print('{"error":"Not logged in."}');

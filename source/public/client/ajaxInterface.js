@@ -17,7 +17,6 @@ window.ajaxInterface = {
 	},
 	
     submitGamedata: function(){
-	
 		if ( ajaxInterface.submiting )
 			return;
 			
