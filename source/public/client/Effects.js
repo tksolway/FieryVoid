@@ -1693,7 +1693,14 @@ window.effects = {
     
     makeBallAnimation: function(sPos, tPos, weapon, hit, currentlocation){
                 
-                        
+        // if it is a gravitic mine, and we are in phase 4 (the resolution phase)
+    	// no trail is needed. Just add the explosion
+    	if (weapon.animationExplosionType == "GravMine" && gamedata.gamephase == 4){
+            effects.addExplosion(tPos, weapon);
+            return;
+        }
+    	
+    	
         var animation = {
             tics:0,
             totalTics:500,
