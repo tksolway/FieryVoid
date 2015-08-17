@@ -144,22 +144,22 @@ shipManager.movement = {
 				continue;
 	
 			if ((movement.value != accel && movement.heading == curheading) || (movement.value == accel && movement.heading != curheading)){
-                            // adjust the current turn delay if the new speed changes the turn delay
-                            var oldspeed = shipManager.movement.getSpeed(ship);
+                // adjust the current turn delay if the new speed changes the turn delay
+                var oldspeed = shipManager.movement.getSpeed(ship);
 
-                            ship.movement.splice(ship.movement.length -1, 1);
+                ship.movement.splice(ship.movement.length -1, 1);
 
-                            var speed = shipManager.movement.getSpeed(ship);
-        
+                var speed = shipManager.movement.getSpeed(ship);
+
 //                            shipManager.movement.adjustTurnDelay(ship, oldspeed, speed);
-                            ship.currentturndelay = shipManager.movement.calculateCurrentTurndelay(ship);
-                            
-                            var shipwindow = $(".shipwindow_"+ship.id);
-                            shipWindowManager.cancelAssignThrust(shipwindow);
-                            shipManager.drawShip(ship);
-                            gamedata.shipStatusChanged(ship);
+                ship.currentturndelay = shipManager.movement.calculateCurrentTurndelay(ship);
+                
+                var shipwindow = $(".shipwindow_"+ship.id);
+                shipWindowManager.cancelAssignThrust(shipwindow);
+                shipManager.drawShip(ship);
+                gamedata.shipStatusChanged(ship);
 
-                            return true;
+                return true;
 			}
 		}
 		
@@ -2083,9 +2083,8 @@ shipManager.movement = {
     },
     
     calculateCurrentTurndelay: function(ship){
-        // Get the current speed, whether it's commited or not. (If it's cancelled,
-        // We recalculate the turndelay anyway.
         var turndelay = Math.ceil(ship.movement[ship.movement.length-1].speed * ship.turndelaycost);
+
         var last = null;
         
         if(gamedata.turn == 1){
@@ -2094,7 +2093,7 @@ shipManager.movement = {
         
         for (var i in ship.movement){
             var movement = ship.movement[i];
-            if (movement.turn < gamedata.turn-1)
+            if (movement.turn < gamedata.turn-2)
                 continue;
                 
             if (movement.commit == false)
@@ -2122,10 +2121,7 @@ shipManager.movement = {
         
         if (turndelay < 0)
             turndelay = 0;
-        
         return turndelay;
-        
-        
     },
     
     calculateTurndelay: function(ship, movement, speed){
