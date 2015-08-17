@@ -265,6 +265,15 @@
             } 
         }
         
+        public function unanimateGravMovements($turn){
+        	// make certain gslips are animated at the start of the firing phase
+        	foreach($this->movement as $elementKey => $move) {
+	        	if ($move->turn == $turn && $move->type == "gslip" &&  TacGamedata::$currentPhase == 3){
+	        		$move->animated = false;
+	        	}
+        	}
+        }
+        
         public function unanimateMovements($turn){
         
             if (!is_array($this->movement))

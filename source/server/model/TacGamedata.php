@@ -378,9 +378,11 @@ class TacGamedata{
         $this->setWaiting();
         $this->checkChanged($turn, $phase, $activeship);
         $this->unanimateMovements($activeship, $turn); 
+        $this->unanimateAllGravMovements($turn);
         $this->calculateTurndelays();
         $this->deleteHiddenData();
         $this->setPreTurnTasks();
+        
         
         if ($this->status == "LOBBY"){
             $this->ships = array();
@@ -474,6 +476,12 @@ class TacGamedata{
         foreach ($this->ships as $ship){
             $ship->currentturndelay = Movement::getTurnDelay($ship);
         }
+    }
+    
+    private function unanimateAllGravMovements($turn){
+    	foreach ($this->ships as $ship){
+    		$ship->unanimateGravMovements($turn);
+    	}
     }
     
     private function unanimateAllMovements()

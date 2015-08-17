@@ -567,7 +567,7 @@ gamedata = {
             
             // check if previous turn wasn't a WeaponBasedMovementTurn
             // If so, don't animate the ships, just the WeaponBasedMovements
-            if(gamedata.getLastPhase() != 31){
+//            if(gamedata.getLastPhase() != 31){
                 console.log("1: lastphase not 31");
                 animation.setAnimating(animation.animateShipMoves,
                     function(){
@@ -598,35 +598,31 @@ gamedata = {
                         });
                     });
                 });
-            }else{
-                console.log("1: lastphase was 31");
-                // TODO: no working code in this else branch.
-                // TODO when a firing phase for movement influencing weapons
-                // are implemented besides the grav mines.
-                animation.gravMovesAnimated = false;
-                infowindow.informPhase(5000, null);
-                gamedata.animating = true;
-                animation.cancelAnimation();
-
-                effects.displayAllWeaponBasedMovementFire(function(){
-                    console.log("displayAllWeaponBasedMovementFire callback");
-                    
-                    if (gamedata.waiting == false){
-                        for (var i in gamedata.ships){
-                            var ship = gamedata.ships[i];
-                            if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
-                                gamedata.selectShip(ship, false);
-                                scrolling.scrollToShip(ship);
-                                break;
-                            }
-                        }
-                    }
-                });
-            }
-            
-//            animation.setAnimating(animation.animateShipGravMoves, function(){
-//                console.log("grav moves done.");
-//            });
+//            }else{
+//                console.log("1: lastphase was 31");
+//                // TODO: no working code in this else branch.
+//                // TODO when a firing phase for movement influencing weapons
+//                // are implemented besides the grav mines.
+//                animation.gravMovesAnimated = false;
+//                infowindow.informPhase(5000, null);
+//                gamedata.animating = true;
+//                animation.cancelAnimation();
+//
+//                effects.displayAllWeaponBasedMovementFire(function(){
+//                    console.log("displayAllWeaponBasedMovementFire callback");
+//                    
+//                    if (gamedata.waiting == false){
+//                        for (var i in gamedata.ships){
+//                            var ship = gamedata.ships[i];
+//                            if (ship.userid == gamedata.thisplayer && !shipManager.isDestroyed(ship)){
+//                                gamedata.selectShip(ship, false);
+//                                scrolling.scrollToShip(ship);
+//                                break;
+//                            }
+//                        }
+//                    }
+//                });
+//            }
         }
         
         

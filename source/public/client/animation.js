@@ -65,6 +65,11 @@ window.animation = {
             for (var a in ship.movement){
                 var movement = ship.movement[a];
                 
+                // skip any gravitic movement during normal ship moves
+                if(movement.type.charAt(0) == 'g'){
+                    continue;
+                }                
+                
                 if (movement.animated == false){
                     if (!movement.commit) {
                         break;
@@ -112,7 +117,6 @@ window.animation = {
         var done = false;
         var found = false;
         var shipchanged = false;
-        var gravMovesFound = false;
         
         if(gamedata.gamephase == 3){
             animation.gravMovesAnimated = false;
@@ -126,7 +130,6 @@ window.animation = {
                 
                 // skip any gravitic movement during normal ship moves
                 if(movement.type.charAt(0) == 'g'){
-                    gravMovesFound = true;
                     continue;
                 }
                 
@@ -174,11 +177,6 @@ window.animation = {
         }
         
         if (!found) {
-            //if(gravMovesFound){
-            //    // Do the grav moves
-            //    gamedata.phase = 31;
-            //}
-
             animation.endAnimation();
         }
         
@@ -198,8 +196,7 @@ window.animation = {
     },
 
     animateShipGravMoves: function(){
-    
-        
+    	
         var done = false;
         var found = false;
         var shipchanged = false;
@@ -212,34 +209,32 @@ window.animation = {
         // Go a bit slower for gravitic moves
         animation.movementspeed = 40;
 
-        console.log("********* animateShipGravMoves ***********");
-
         for (var i in gamedata.ships){
-            console.log("a");
+//            console.log("a");
             var ship = gamedata.ships[i];
 
             for (var a in ship.movement){
-                console.log("b");
+  //              console.log("b");
                 var movement = ship.movement[a];
                 
                 // skip any non-gravitic movement during gravitic ship moves
                 if(movement.type.charAt(0) != 'g'){
-                    console.log("c");
+    //                console.log("c");
 
                     continue;
                 }
                 
                 if (movement.animated == false){
-                    console.log("d");
+      //              console.log("d");
 
                     if (!movement.commit){
-                        console.log("e");
+        //                console.log("e");
                         break;
                     }
                             
                     found = true;
                     if (animation.shipAnimating != ship.id){
-                        console.log("f");
+          //              console.log("f");
 
                         animation.shipAnimating = ship.id
                         scrolling.scrollToShip(ship);
@@ -249,7 +244,7 @@ window.animation = {
                     }
                     
                     if (animation.checkGravAnimationDone(movement)){
-                        console.log("g");
+            //            console.log("g");
 
                         gamedata.activeship = -1;
 
@@ -263,7 +258,7 @@ window.animation = {
                         ballistics.drawBallistics();
                         shipManager.drawShip(ship);
                     }else{
-                        console.log("i");
+              //          console.log("i");
 
                         //gamedata.activeship = ship;
                         gamedata.selectShip(ship, false);

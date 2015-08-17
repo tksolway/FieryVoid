@@ -71,6 +71,10 @@ window.effects = {
     },
     
     drawPersistentEffects: function(){
+    	
+    	if(!(gamedata.gamephase == 4 || gamedata.gamephase == 3)){
+    		effects.turn4EffectsInitialised = false;
+    	}
         
         if(effects.turn4EffectsInitialised || !(gamedata.gamephase == 4 || gamedata.gamephase == 3)){
             // all gravmines have been animated.
@@ -550,8 +554,18 @@ window.effects = {
             },
     
     displayAllWeaponBasedMovementFire: function(callback){
+    	
+        // plopje: properly re-initialise the animation component
+        // animation.waitingElement = null;
+        
+
         effects.callback = callback;
         effects.doDisplayAllWeaponBasedMovementFire();
+        
+        // plopje: properly re-initialise the animation component
+        // animation.waitingElement = null;
+        
+
     },
     
     doDisplayAllWeaponBasedMovementFire: function(){
