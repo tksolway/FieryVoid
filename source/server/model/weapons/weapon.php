@@ -847,6 +847,10 @@ class Weapon extends ShipSystem{
         // gameData and fireOrder is needed to check if target has jammers
         return true;
     }
+    
+    public function firesInPhase($phase) {
+    	return false;
+    }
 
     protected function getSystemArmour($system, $gamedata, $fireOrder){
 

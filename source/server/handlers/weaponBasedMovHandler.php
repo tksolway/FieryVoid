@@ -1,10 +1,5 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 class WeaponBasedMovHandler{
     private $fireOrders = array();
     
@@ -110,10 +105,10 @@ class GravMineHandler{
         foreach($affectedShips as $shipId=>$mineOrderArray){
             $ship = $gamedata->getShipById($shipId);
              
-            if(sizeof($mineOrderArray) == 1){
+            if(sizeof($mineOrderArray) === 1){
                 // Only caught in one blast. This one is staying in the array
                 continue;
-            }else if(sizeof($mineOrderArray) == 2){
+            }else if(sizeof($mineOrderArray) === 2){
                 // Caught by 2 blasts. Check if the ship might be directly
                 // in between them
                 if($this->isHexagonCrossed($ship, $mineOrderArray[0], $mineOrderArray[1])){
@@ -173,6 +168,9 @@ class GravMineHandler{
                     $this->moveShipToMine($ship, $mineOrderArray);
                 }
             }else{
+            	$shipCaught = false;
+            	
+            	Debug::log("******* Affected by 3+ gravmines *******");
                 $shipCo = $ship->getCoPos();
                 $pointsArray = array();
                 // Caught by 3 or more blasts.
@@ -188,12 +186,16 @@ class GravMineHandler{
                 
                 foreach($hexCorners as $hexCorner){
                     if($this->checkForPointInBlastArea($hexCorner, $surroundingPoints)){
-                        // Ship is in mine area
+            			Debug::log("******* Caught between 3+ gravmines *******");
+            			$shipCaught = true;
+                    	// Ship is in mine area
                         continue;
                     }
                 }
                 
-                $this->moveShipToMine($ship, $mineOrderArray);
+                if(!$shipCaught){
+                	$this->moveShipToMine($ship, $mineOrderArray);
+                }
             }
         }
     }
@@ -276,25 +278,27 @@ class GravMineHandler{
     
     private function getGravMineDamage($ship, $distance){
         //0:Light, 1:Medium, 2:Heavy, 3:Capital, 4:Enormous
+        $baseDamage = 1 + $distance;
+        
         switch($ship->shipSizeClass){
             case -1:
                 // fighter unit
-                return $distance;
+                return $baseDamage;
             case 0:
                 // LCV
-                return 2*$distance;
+                return 2*$baseDamage;
             case 1:
                 // MCV
-                return 3*$distance;
+                return 3*$baseDamage;
             case 2:
                 // HCV
-                return 4*$distance;
+                return 4*$baseDamage;
             case 3:
                 // Capital
-                return 5*$distance;
+                return 5*$baseDamage;
             case 4:
                 // enormous non-base
-                return 6*$distance;
+                return 6*$baseDamage;
             default:
                 return 0;
         }
@@ -305,7 +309,7 @@ class GravMineHandler{
         // First get closest
         $closestMineOrder = $this->getClosestMineCo($ship, $mineOrderArray);
         $mineCo = Mathlib::hexCoToPixel($closestMineOrder->x, $closestMineOrder->y);
-        $distance = round(Mathlib::getDistanceHex($mineCo, $ship->getCoPos()));
+        $distance = round(Mathlib::getDistanceHex($mineCo, $ship->getCoPos()), 0, PHP_ROUND_HALF_UP);
         $shooter = $gamedata->getShipById($closestMineOrder->shooterid);
         
         if($distance < 0 || $distance > 5){
