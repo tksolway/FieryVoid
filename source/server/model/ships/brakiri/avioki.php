@@ -3,10 +3,10 @@ class Avioki extends BaseShip{
     
     function __construct($id, $userid, $name,  $slot){
         parent::__construct($id, $userid, $name,  $slot);
-        
-	$this->pointCost = 725;
-	$this->faction = "Brakiri";
-        $this->phpclass = "Avioki";
+
+        $this->pointCost = 725;
+        $this->faction = "Brakiri";
+	    $this->phpclass = "Avioki";
         $this->imagePath = "img/ships/avioki.png";
         $this->shipClass = "Avioki Heavy Cruiser";
         $this->shipSizeClass = 3;
@@ -22,32 +22,30 @@ class Avioki extends BaseShip{
         $this->iniativebonus = 0;
         
         $this->gravitic = true;
-
+        
         $this->addPrimarySystem(new Reactor(6, 22, 0, 0));
         $this->addPrimarySystem(new CnC(8, 16, 0, 0));
         $this->addPrimarySystem(new Scanner(5, 13, 8, 8));
         $this->addPrimarySystem(new Engine(6, 16, 0, 15, 4));
         $this->addPrimarySystem(new JumpEngine(5, 12, 4, 28));
-	$this->addPrimarySystem(new Hangar(5, 2));
+		$this->addPrimarySystem(new Hangar(5, 2));
    
-        $this->addFrontSystem(new GraviticMine(3, 5, 2, 240, 60));
-        $this->addFrontSystem(new GraviticMine(3, 5, 2, 240, 60));
-        $this->addFrontSystem(new GraviticMine(3, 5, 2, 240, 60));
-        $this->addFrontSystem(new GraviticMine(3, 5, 2, 300, 120));
+        $this->addFrontSystem(new GravitonPulsar(3, 5, 2, 240, 60));
+        $this->addFrontSystem(new GravitonPulsar(3, 5, 2, 300, 120));
         $this->addFrontSystem(new GraviticThruster(5, 10, 0, 4, 1));
         $this->addFrontSystem(new GraviticThruster(5, 10, 0, 4, 1));
-
-        $this->addAftSystem(new GraviticMine(3, 5, 2, 240, 60));
-        $this->addAftSystem(new GraviticMine(3, 5, 2, 240, 60));
+        
+        $this->addAftSystem(new GravitonPulsar(3, 5, 2, 120, 300));
+        $this->addAftSystem(new GravitonPulsar(3, 5, 2, 60, 240));
         $this->addAftSystem(new GraviticThruster(5, 15, 0, 8, 2));
         $this->addAftSystem(new GraviticThruster(5, 15, 0, 8, 2));
-
-        $this->addLeftSystem(new GraviticMine(3, 5, 2, 240, 60));
-        $this->addLeftSystem(new GraviticMine(3, 5, 2, 240, 60));
+        
+        $this->addLeftSystem(new GravitonBeam(5, 8, 8, 300, 360));
+        $this->addLeftSystem(new GravitonBeam(5, 8, 8, 300, 360));
         $this->addLeftSystem(new GraviticThruster(5, 15, 0, 6, 3));
-
-        $this->addRightSystem(new GraviticMine(3, 5, 2, 240, 60));
-        $this->addRightSystem(new GraviticMine(3, 5, 2, 240, 60));
+        
+        $this->addRightSystem(new GravitonBeam(5, 8, 8, 0, 60));
+        $this->addRightSystem(new GravitonBeam(5, 8, 8, 0, 60));
         $this->addRightSystem(new GraviticThruster(5, 15, 0, 6, 4));
         
         //0:primary, 1:front, 2:rear, 3:left, 4:right;
@@ -58,3 +56,4 @@ class Avioki extends BaseShip{
         $this->addPrimarySystem(new Structure(6, 44));
     }
 }
+?>
